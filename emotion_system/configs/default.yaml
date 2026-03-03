@@ -1,0 +1,101 @@
+# ─── Default Configuration ───
+# Override per-experiment with mobilevit_fer.yaml etc.
+
+seed: 42
+
+# ─── Paths ───
+paths:
+  raw_train: "/home/ajy/AI_hub_250704/data2/data_processed_korea"
+  raw_val: "/home/ajy/AI_hub_250704/data2/data_processed_korea_validation"
+  output_dir: "/home/ajy/Jetson_thor/emotion_system/result"
+  csv_dir: "/mnt/hdd/ajy_25/Aihub_data_AU"
+
+# ─── Preprocessing ───
+preprocess:
+  # Face detection
+  face_detector: "yolov8"  # yolov8 | retinaface
+  face_model: "arnabdhar/YOLOv8-Face-Detection"
+
+  # AU extraction
+  work_short_side: 800
+  patch_crop_size: 256      # crop window at work resolution
+  auto_orient: true         # try 0/180 rotation
+  mp_refine_landmarks: true
+  workers: 12
+
+  # PERCLOS features (extracted during AU stage)
+  extract_perclos: true
+  ear_landmarks:             # Eye Aspect Ratio landmarks
+    left:  [362, 385, 387, 263, 373, 380]
+    right: [33, 160, 158, 133, 153, 144]
+
+# ─── Model ───
+model:
+  backbone: "mobilevitv2_100"   # timm model name
+  pretrained: true
+  d_emb: 384                    # embedding dimension (backbone output)
+  
+  # AU RoI extraction
+  roi_mode: "bilinear"          # bilinear | roi_align
+  roi_spatial: 1                # 1=point, 3=3x3 pooling
+  num_au_regions: 6             # forehead, eyes, nose, cheeks, mouth, chin
+  
+  # Cross-attention fusion
+  n_heads: 8
+  n_fusion_layers: 1            # lightweight: 1 layer enough
+  dropout: 0.1
+  gate_init: 0.0                # sigmoid gate initial value
+  
+  # FER head
+  num_classes: 7
+  head_dropout: 0.2
+
+# ─── Training ───
+training:
+  epochs: 200
+  batch_size: 64
+  num_workers: 8
+  
+  # Optimizer
+  optimizer: "adamw"
+  base_lr: 3e-4
+  weight_decay: 0.05
+  
+  # Scheduler
+  scheduler: "cosine_warmup"
+  warmup_ratio: 0.05
+  min_lr: 1e-6
+  
+  # Loss
+  loss: "focal"                 # focal | ce_weighted
+  focal_gamma: 2.0
+  label_smoothing: 0.0          # don't combine with focal
+  
+  # Backbone strategy
+  freeze_backbone_epochs: 3
+  backbone_lr_scale: 0.1        # backbone gets lr * 0.1 after unfreeze
+  
+  # Regularization
+  grad_clip_norm: 5.0
+  mixup_alpha: 0.0              # 0 = disabled
+  
+  # AMP
+  amp: true
+  
+  # Checkpointing
+  save_every: 10
+  metric: "f1_macro"            # f1_macro | accuracy
+
+# ─── Data Augmentation ───
+augmentation:
+  # Global image
+  global_img_size: 224
+  train_global:
+    - RandomHorizontalFlip: { p: 0.5 }
+    - ColorJitter: { brightness: 0.2, contrast: 0.2, saturation: 0.1, hue: 0.02 }
+    - RandomErasing: { p: 0.1 }
+  
+  # AU is extracted from feature map, no separate patch augmentation needed
+  
+  # Normalization (auto-resolved from timm model)
+  normalize: "from_model"

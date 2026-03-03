@@ -1,0 +1,76 @@
+# ─── MobileViTv3 FER Training Config ───
+# 경로는 실제 환경에 맞게 수정
+
+seed: 42
+
+paths:
+  # 원본 이미지 (class별 하위폴더: angry, anxious, happy, ...)
+  raw_train: "/home/ajy/AI_hub_250704/data2/data_processed_korea"
+  raw_val: "/home/ajy/AI_hub_250704/data2/data_processed_korea_validation"
+
+  # CSV 저장 위치 (없으면 자동 생성)
+  csv_dir: "/mnt/hdd/ajy_25/au_csv"
+
+  # 학습 결과 저장
+  output_dir: "/home/ajy/Jetson_thor/emotion_system/result"
+
+  # train_csv, val_csv는 파이프라인이 자동으로 채움
+  # 수동 지정도 가능:
+  # train_csv: "/mnt/hdd/ajy_25/au_csv/index_train.csv"
+  # val_csv: "/mnt/hdd/ajy_25/au_csv/index_val.csv"
+
+# ─── Preprocessing (CSV 추출 설정) ───
+preprocess:
+  work_short_side: 800    # 이미지 짧은 변 기준 리사이즈
+  workers: 12             # MediaPipe 병렬 워커 수
+
+# ─── Model ───
+model:
+  backbone: "mobilevitv2_100"   # ~5M params, d=384
+  pretrained: true
+  d_emb: 384
+  
+  roi_mode: "bilinear"
+  roi_spatial: 1
+  
+  n_heads: 8
+  n_fusion_layers: 1
+  dropout: 0.1
+  gate_init: 0.0
+  
+  num_classes: 7                # angry, anxious, happy, hurt, neutral, sad, surprised
+  head_dropout: 0.2
+
+# ─── Training ───
+training:
+  epochs: 200
+  batch_size: 64
+  num_workers: 8
+  
+  optimizer: "adamw"
+  base_lr: 3e-4
+  weight_decay: 0.05
+  
+  scheduler: "cosine_warmup"
+  warmup_ratio: 0.05
+  min_lr: 1e-6
+  
+  # Focal Loss (label_smoothing + class_weight 충돌 방지)
+  loss: "focal"
+  focal_gamma: 2.0
+  label_smoothing: 0.0
+  
+  # Backbone freeze → unfreeze 전략
+  freeze_backbone_epochs: 3
+  backbone_lr_scale: 0.1
+  
+  grad_clip_norm: 5.0
+  amp: true
+  
+  save_every: 10
+  metric: "f1_macro"
+
+# ─── Augmentation ───
+augmentation:
+  global_img_size: 224
+  normalize: "from_model"

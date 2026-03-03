@@ -1,0 +1,21 @@
+# ─── Core ───
+torch>=2.0
+torchvision>=0.15
+timm>=0.9.0
+numpy
+pandas
+Pillow
+scikit-learn
+matplotlib
+pyyaml
+tqdm
+
+# ─── Preprocessing ───
+ultralytics          # YOLOv8
+mediapipe            # FaceMesh
+opencv-python-headless
+
+# ─── Inference (Jetson) ───
+# pyrealsense2       # Intel RealSense (install separately on Jetson)
+# onnx               # ONNX export
+# onnxruntime-gpu    # or tensorrt

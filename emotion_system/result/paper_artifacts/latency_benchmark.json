@@ -1,0 +1,12 @@
+{
+  "gpu_latency_ms": 4.53,
+  "gpu_latency_std_ms": 0.5,
+  "gpu_fps": 220.7,
+  "cpu_latency_ms": 17.25,
+  "cpu_latency_std_ms": 0.1,
+  "cpu_fps": 58.0,
+  "batch_size": 1,
+  "img_size": 224,
+  "num_au": 8,
+  "n_runs": 50
+}

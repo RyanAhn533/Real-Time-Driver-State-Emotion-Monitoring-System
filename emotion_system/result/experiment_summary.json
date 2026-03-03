@@ -1,0 +1,14 @@
+{
+  "best_f1": 0.7953,
+  "total_epochs": 200,
+  "total_time_hours": 35.17,
+  "total_time_minutes": 2110.4,
+  "avg_epoch_seconds": 633.1,
+  "device": "cuda",
+  "train_samples": 413122,
+  "val_samples": 51804,
+  "num_classes": 7,
+  "num_au_regions": 8,
+  "gpu_name": "NVIDIA RTX A6000",
+  "gpu_max_mem_mb": 4401.7
+}
