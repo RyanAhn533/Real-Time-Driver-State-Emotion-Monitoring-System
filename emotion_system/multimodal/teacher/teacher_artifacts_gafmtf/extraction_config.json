@@ -1,0 +1,10 @@
+{
+  "ckpt_dir": "/home/jy/260301/checkpoints_mm_v4_gafmtf",
+  "bio_encoder_type": "gafmtf",
+  "fold_aware": true,
+  "n_folds": 6,
+  "n_extracted": 2259,
+  "elapsed_sec": 68.0,
+  "teacher_model": "VisionMER_V4",
+  "teacher_d_model": 128
+}

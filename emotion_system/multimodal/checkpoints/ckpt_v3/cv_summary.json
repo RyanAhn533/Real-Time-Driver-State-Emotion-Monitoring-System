@@ -1,0 +1,85 @@
+{
+  "loss": {
+    "mean": 1.8945,
+    "std": 2.8526
+  },
+  "CCC_A": {
+    "mean": 0.2055,
+    "std": 0.0614
+  },
+  "CCC_V": {
+    "mean": 0.0877,
+    "std": 0.0432
+  },
+  "qAcc": {
+    "mean": 0.5283,
+    "std": 0.0411
+  },
+  "pearA": {
+    "mean": 0.2557,
+    "std": 0.0604
+  },
+  "pearV": {
+    "mean": 0.1614,
+    "std": 0.0701
+  },
+  "mseA": {
+    "mean": 0.1807,
+    "std": 0.0315
+  },
+  "mseV": {
+    "mean": 0.0335,
+    "std": 0.0138
+  },
+  "A_acc": {
+    "mean": 0.5835,
+    "std": 0.0426
+  },
+  "V_acc": {
+    "mean": 0.9054,
+    "std": 0.0541
+  },
+  "A_f1": {
+    "mean": 0.5375,
+    "std": 0.1671
+  },
+  "V_f1": {
+    "mean": 0.9484,
+    "std": 0.0311
+  },
+  "score": {
+    "mean": 0.3375,
+    "std": 0.0331
+  },
+  "config": {
+    "base_dir": "/home/jy/260210/precessed_data",
+    "out_dir": "./ckpt_v3",
+    "index_csv": null,
+    "d_model": 128,
+    "num_tokens": 16,
+    "n_heads": 4,
+    "dropout": 0.2,
+    "bio_variant": "mamba",
+    "bio_n_layers": 2,
+    "conditioner": "selective_ssm",
+    "modality_dropout": true,
+    "p_drop_audio": 0.1,
+    "p_drop_bio": 0.3,
+    "use_consistency": true,
+    "lambda_consist": 0.1,
+    "epochs": 40,
+    "batch_size": 16,
+    "lr": 0.001,
+    "weight_decay": 0.01,
+    "n_folds": 6,
+    "workers": 4,
+    "amp": true,
+    "mel_time_bins": 128,
+    "teacher_dir": "/home/jy/260210/precessed_data/teacher_artifacts_gafmtf",
+    "d_audio_teacher": 128,
+    "d_bio_teacher": 128,
+    "tau_start": 2.0,
+    "tau_end": 0.5
+  },
+  "elapsed_min": 32.9
+}
