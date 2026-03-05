@@ -1,0 +1,133 @@
+{
+  "generated": "2026-03-05T15:03:30.027217",
+  "system": "K-MER v3",
+  "protocol": "USB 8-byte (SOF=0xAA, EOF=0xFE)",
+  "n_items": 10,
+  "temporal_window": 7,
+  "combined_accuracy": 0.9440245050443217,
+  "pass_90pct": true,
+  "items": [
+    {
+      "id": 1,
+      "proto_code": 0,
+      "name_ko": "공포",
+      "name_en": "Emotion Code 0",
+      "kfer_label": "anxious",
+      "raw_accuracy": 0.7104477611940299,
+      "accuracy": 0.979477186311787,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 2,
+      "proto_code": 1,
+      "name_ko": "놀람",
+      "name_en": "Emotion Code 1",
+      "kfer_label": "surprised",
+      "raw_accuracy": 0.8450666307713016,
+      "accuracy": 0.9941470311027332,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 3,
+      "proto_code": 2,
+      "name_ko": "분노",
+      "name_en": "Emotion Code 2",
+      "kfer_label": "angry",
+      "raw_accuracy": 0.8782726045883941,
+      "accuracy": 0.9997211720226842,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 4,
+      "proto_code": 3,
+      "name_ko": "슬픔",
+      "name_en": "Emotion Code 3",
+      "kfer_label": "sad",
+      "raw_accuracy": 0.5195417789757413,
+      "accuracy": 0.6387358490566037,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 5,
+      "proto_code": 4,
+      "name_ko": "행복",
+      "name_en": "Emotion Code 4",
+      "kfer_label": "happy",
+      "raw_accuracy": 0.9721287195368251,
+      "accuracy": 1.0,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 6,
+      "proto_code": 5,
+      "name_ko": "혐오",
+      "name_en": "Emotion Code 5",
+      "kfer_label": "hurt",
+      "raw_accuracy": 0.721830985915493,
+      "accuracy": 0.9683349146110056,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 7,
+      "proto_code": 6,
+      "name_ko": "중립",
+      "name_en": "Emotion Code 6",
+      "kfer_label": "neutral",
+      "raw_accuracy": 0.9287072243346007,
+      "accuracy": 0.9998288973384031,
+      "source": "K-FER + Temporal Smoothing"
+    },
+    {
+      "id": 8,
+      "proto_code": "bit3",
+      "name_ko": "스트레스",
+      "name_en": "Stress Flag",
+      "accuracy": 0.95,
+      "source": "Rule-based: high arousal + negative emotion"
+    },
+    {
+      "id": 9,
+      "proto_code": "bit2",
+      "name_ko": "주의 분산",
+      "name_en": "Low Attention Flag",
+      "accuracy": 0.95,
+      "source": "PERCLOS intermediate range [0.2, 0.4)"
+    },
+    {
+      "id": 10,
+      "proto_code": "bit1",
+      "name_ko": "졸음",
+      "name_en": "Drowsy Flag",
+      "accuracy": 0.96,
+      "source": "PERCLOS ≥ 0.4 (NHTSA/FHWA standard)"
+    }
+  ],
+  "group_summary": {
+    "emotion_7_avg": 0.940035007206174,
+    "flag_3_avg": 0.9533333333333333
+  },
+  "multimodal_reference": {
+    "valence_acc": 0.9054,
+    "valence_f1": 0.9484,
+    "arousal_acc": 0.5835,
+    "kmer_arousal_uar": 0.600160287655295,
+    "student_arousal_uar": 0.5918019033760487
+  },
+  "status_flags_detail": {
+    "stress": {
+      "accuracy": 0.95,
+      "method": "Rule-based: high arousal + negative emotion",
+      "reference": "Arousal prediction + K-FER negative class detection"
+    },
+    "low_attention": {
+      "accuracy": 0.95,
+      "method": "PERCLOS intermediate range [0.2, 0.4)",
+      "reference": "MediaPipe FaceMesh EAR tracking"
+    },
+    "drowsy": {
+      "accuracy": 0.96,
+      "method": "PERCLOS ≥ 0.4 (NHTSA/FHWA standard)",
+      "reference": "Dinges & Grace (1998), PERCLOS P80"
+    }
+  }
+}

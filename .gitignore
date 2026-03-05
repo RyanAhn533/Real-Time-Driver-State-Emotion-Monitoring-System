@@ -1,0 +1,38 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.eggs/
+
+# ── Data (large) ──
+data/
+paper/
+
+# ── Old system (no longer used) ──
+v4_visionmer/
+
+# ── Epoch checkpoints (keep only best/last) ──
+emotion_system/result/epoch_*.pth
+emotion_system/result/paper_artifacts/predictions.csv
+emotion_system/result/paper_artifacts/misclassified_samples.csv
+
+# ── Large feature files ──
+multimodal_dms/features/*.npz
+multimodal_dms/features/*.pt
+
+# ── IDE / OS ──
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Claude worktrees ──
+.claude/worktrees/
+
+# ── Misc ──
+*.log
+wandb/
+runs/

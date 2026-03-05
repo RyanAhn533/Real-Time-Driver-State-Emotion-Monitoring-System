@@ -1,0 +1,362 @@
+[
+  {
+    "ablation_id": 1,
+    "name": "LGBM_4expert_27d",
+    "desc": "Baseline LightGBM with 4 experts (no K-FER)",
+    "mean_A_UAR": 56.5324696891383,
+    "std_A_UAR": 7.105169004118836,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 56.08815795338058
+      },
+      {
+        "fold": 2,
+        "A_UAR": 66.85091148758968
+      },
+      {
+        "fold": 3,
+        "A_UAR": 49.98963802155291
+      },
+      {
+        "fold": 4,
+        "A_UAR": 50.85835202774729
+      },
+      {
+        "fold": 5,
+        "A_UAR": 65.40076982666795
+      },
+      {
+        "fold": 6,
+        "A_UAR": 50.006988817891376
+      }
+    ]
+  },
+  {
+    "ablation_id": 2,
+    "name": "LGBM_5expert_39d",
+    "desc": "LightGBM + K-FER (5 experts)",
+    "mean_A_UAR": 53.86911261475689,
+    "std_A_UAR": 4.745439349858316,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 54.95832776217855
+      },
+      {
+        "fold": 2,
+        "A_UAR": 60.739375964289465
+      },
+      {
+        "fold": 3,
+        "A_UAR": 58.462282398452615
+      },
+      {
+        "fold": 4,
+        "A_UAR": 46.98184653079407
+      },
+      {
+        "fold": 5,
+        "A_UAR": 52.072843032826576
+      },
+      {
+        "fold": 6,
+        "A_UAR": 50.0
+      }
+    ]
+  },
+  {
+    "ablation_id": 3,
+    "name": "KMERFusion_15tok",
+    "desc": "Pool-FFN + MHSA neural fusion (15 tokens)",
+    "mean_A_UAR": 60.016028765529505,
+    "std_A_UAR": 6.710331228201333,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 64.38397884446822
+      },
+      {
+        "fold": 2,
+        "A_UAR": 60.52667056127263
+      },
+      {
+        "fold": 3,
+        "A_UAR": 70.04352030947776
+      },
+      {
+        "fold": 4,
+        "A_UAR": 50.88937679983454
+      },
+      {
+        "fold": 5,
+        "A_UAR": 62.14050547109519
+      },
+      {
+        "fold": 6,
+        "A_UAR": 52.11212060702874
+      }
+    ]
+  },
+  {
+    "ablation_id": 4,
+    "name": "Hybrid_static_alpha",
+    "desc": "Neural + LightGBM, \u03b1=0.5",
+    "mean_A_UAR": 56.48073118206898,
+    "std_A_UAR": 5.9749713277523995,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 58.50306784923712,
+        "neural_UAR": 62.0374084473563,
+        "lgbm_UAR": 54.95832776217855,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 2,
+        "A_UAR": 64.76879521862222,
+        "neural_UAR": 58.97631779984721,
+        "lgbm_UAR": 60.739375964289465,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 3,
+        "A_UAR": 62.620889748549324,
+        "neural_UAR": 67.2872340425532,
+        "lgbm_UAR": 58.462282398452615,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 4,
+        "A_UAR": 49.42803048382734,
+        "neural_UAR": 53.28226178543586,
+        "lgbm_UAR": 46.98184653079407,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 5,
+        "A_UAR": 53.99740970272102,
+        "neural_UAR": 55.779752106129564,
+        "lgbm_UAR": 52.072843032826576,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 6,
+        "A_UAR": 49.566194089456864,
+        "neural_UAR": 51.83007188498403,
+        "lgbm_UAR": 50.0,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      }
+    ]
+  },
+  {
+    "ablation_id": 5,
+    "name": "Hybrid_dynamic_alpha",
+    "desc": "Neural + LightGBM, dynamic \u03b1 \u2605",
+    "mean_A_UAR": 57.13595132711345,
+    "std_A_UAR": 5.257107443915949,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 60.45222920473623,
+        "neural_UAR": 61.95346971520257,
+        "lgbm_UAR": 54.95832776217855,
+        "alpha_mean": 0.5901923179626465,
+        "alpha_std": 0.06842992454767227
+      },
+      {
+        "fold": 2,
+        "A_UAR": 63.21020386764331,
+        "neural_UAR": 64.12768315882502,
+        "lgbm_UAR": 60.739375964289465,
+        "alpha_mean": 0.5310576558113098,
+        "alpha_std": 0.09230922907590866
+      },
+      {
+        "fold": 3,
+        "A_UAR": 59.747167725891124,
+        "neural_UAR": 68.5755733628074,
+        "lgbm_UAR": 58.462282398452615,
+        "alpha_mean": 0.60329669713974,
+        "alpha_std": 0.05275870859622955
+      },
+      {
+        "fold": 4,
+        "A_UAR": 48.058167470128716,
+        "neural_UAR": 52.6275595436972,
+        "lgbm_UAR": 46.98184653079407,
+        "alpha_mean": 0.5318612456321716,
+        "alpha_std": 0.04850124195218086
+      },
+      {
+        "fold": 5,
+        "A_UAR": 59.168926116006595,
+        "neural_UAR": 59.36501404086376,
+        "lgbm_UAR": 52.072843032826576,
+        "alpha_mean": 0.6083728671073914,
+        "alpha_std": 0.06253749132156372
+      },
+      {
+        "fold": 6,
+        "A_UAR": 52.179013578274756,
+        "neural_UAR": 52.155551118210866,
+        "lgbm_UAR": 50.0,
+        "alpha_mean": 0.558293879032135,
+        "alpha_std": 0.07311567664146423
+      }
+    ]
+  },
+  {
+    "ablation_id": 6,
+    "name": "Hybrid_no_kfer",
+    "desc": "Hybrid without K-FER (contribution test)",
+    "mean_A_UAR": 57.154438581501466,
+    "std_A_UAR": 6.7130882561852445,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 59.47764852698667,
+        "neural_UAR": 67.0150495461366,
+        "lgbm_UAR": 56.08815795338058,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 2,
+        "A_UAR": 64.9006126514777,
+        "neural_UAR": 60.444284665737946,
+        "lgbm_UAR": 66.85091148758968,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 3,
+        "A_UAR": 50.30395136778115,
+        "neural_UAR": 71.20060790273557,
+        "lgbm_UAR": 49.98963802155291,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 4,
+        "A_UAR": 50.03022926511066,
+        "neural_UAR": 58.5906798402622,
+        "lgbm_UAR": 50.85835202774729,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 5,
+        "A_UAR": 66.16696523675802,
+        "neural_UAR": 64.2115328749879,
+        "lgbm_UAR": 65.40076982666795,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 6,
+        "A_UAR": 52.04722444089457,
+        "neural_UAR": 51.760183706070286,
+        "lgbm_UAR": 50.006988817891376,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      }
+    ]
+  },
+  {
+    "ablation_id": 7,
+    "name": "Hybrid_no_bio",
+    "desc": "Hybrid without Bio (contribution test)",
+    "mean_A_UAR": 54.45019835716533,
+    "std_A_UAR": 3.3577443866128664,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 55.45304630743861,
+        "neural_UAR": 59.62324137213828,
+        "lgbm_UAR": 54.95832776217855,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 2,
+        "A_UAR": 56.583382015907965,
+        "neural_UAR": 51.56608097784569,
+        "lgbm_UAR": 60.739375964289465,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 3,
+        "A_UAR": 57.491710417242324,
+        "neural_UAR": 60.76264161370545,
+        "lgbm_UAR": 58.462282398452615,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 4,
+        "A_UAR": 48.15601482825004,
+        "neural_UAR": 54.62348654797703,
+        "lgbm_UAR": 46.98184653079407,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 5,
+        "A_UAR": 57.07913721313063,
+        "neural_UAR": 55.76099060714632,
+        "lgbm_UAR": 52.072843032826576,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      },
+      {
+        "fold": 6,
+        "A_UAR": 51.93789936102237,
+        "neural_UAR": 52.619808306709274,
+        "lgbm_UAR": 50.0,
+        "alpha_mean": 0.5,
+        "alpha_std": 0.0
+      }
+    ]
+  },
+  {
+    "ablation_id": 8,
+    "name": "KMERFusion_no_mask",
+    "desc": "Neural fusion without validity mask",
+    "mean_A_UAR": 59.899764047490066,
+    "std_A_UAR": 6.128637669407556,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 62.19191514017025
+      },
+      {
+        "fold": 2,
+        "A_UAR": 62.308452792881866
+      },
+      {
+        "fold": 3,
+        "A_UAR": 70.91392649903288
+      },
+      {
+        "fold": 4,
+        "A_UAR": 53.599669069097736
+      },
+      {
+        "fold": 5,
+        "A_UAR": 57.31153771666505
+      },
+      {
+        "fold": 6,
+        "A_UAR": 53.073083067092654
+      }
+    ]
+  }
+]
