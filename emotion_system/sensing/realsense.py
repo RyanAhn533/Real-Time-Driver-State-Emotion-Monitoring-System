@@ -23,7 +23,7 @@ def run_realsense(
     except Exception as e:
         print(f"[RealSense:{tag}] start failed: {e}")
         return
-    
+
     print(f"[RealSense:{tag}] started: {device_serial} {width}x{height}@{fps}")
 
     try:
