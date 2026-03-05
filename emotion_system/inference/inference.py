@@ -2,6 +2,7 @@ import os
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 
 import time, threading
+from collections import deque, Counter
 import numpy as np
 import cv2
 import torch
@@ -9,8 +10,135 @@ import torch.nn.functional as F
 
 import mediapipe as mp
 
-from realsense import run_realsense   # 네 파일
-from models.fer_model import AUFERModel      # 네 모델 코드
+from realsense import run_realsense
+from models.fer_model import AUFERModel
+
+
+# ─────────────────────────────────────────────
+# 감정 그룹 정의
+#
+# SUSTAINED  : 표정이 지속되는 감정 → 낮은 vote 기준 (빠른 전환 허용)
+# TRANSIENT  : 일시적으로 튀는 감정 → 높은 vote 기준 (엄격한 검증)
+# ─────────────────────────────────────────────
+SUSTAINED_EMOTIONS = {"neutral", "happy", "sad"}
+TRANSIENT_EMOTIONS = {"surprised", "angry", "anxious", "hurt", "fear", "disgust"}
+
+VOTE_MIN = {
+    "sustained": 6,   # vote_window 중 전부 → 지속형은 충분히 확인 후 전환
+    "transient": 3,   # vote_window 중 3번 이상 → 순간형은 빠르게 포착
+}
+
+def get_emotion_group(emotion: str) -> str:
+    if emotion in TRANSIENT_EMOTIONS:
+        return "transient"
+    return "sustained"
+
+
+# ─────────────────────────────────────────────
+# StableEmotionDetector
+#
+# 전략 1: Majority Voting (감정 그룹별 기준 차등)
+# 전략 2: EMA (score 평활화)
+# 전략 3: Confidence Threshold + Hysteresis OFF
+# 전략 4: 최소 유지 시간 (min_hold_sec)
+# ─────────────────────────────────────────────
+class StableEmotionDetector:
+    def __init__(
+        self,
+        vote_window: int      = 6,
+        alpha: float          = 0.3,
+        conf_threshold: float = 0.5,   # softmax 확률 기준 (0~1)
+        off_hold_frames: int  = 3,
+        min_hold_sec: float   = 0.5,
+    ):
+        self.vote_window     = vote_window
+        self.alpha           = alpha
+        self.conf_threshold  = conf_threshold
+        self.off_hold_frames = off_hold_frames
+        self.min_hold_sec    = min_hold_sec
+
+        self._vote_buf        = deque(maxlen=vote_window)
+        self._ema_scores      = {}
+        self._low_conf_streak = 0
+
+        self._alert_on        = False
+        self._current_emotion = None
+        self._current_score   = None
+        self._emotion_set_at  = None
+
+    def _try_set_emotion(self, emotion: str, score: float):
+        now = time.time()
+        if self._emotion_set_at is not None:
+            if now - self._emotion_set_at < self.min_hold_sec:
+                return
+        self._current_emotion = emotion
+        self._current_score   = score
+        self._alert_on        = True
+        self._emotion_set_at  = now
+
+    def update(self, emotion: str | None, scores: dict | None):
+        """
+        emotion : 모델 예측 dominant emotion (str)
+        scores  : {"happy": 0.82, "sad": 0.05, ...}  (softmax 확률, 0~1)
+        반환    : (stable_emotion, stable_score, alert_on)
+        """
+        # ── 얼굴 없음 ──
+        if emotion is None or scores is None:
+            self._low_conf_streak += 1
+            if self._low_conf_streak >= self.off_hold_frames:
+                self._alert_on        = False
+                self._current_emotion = None
+                self._current_score   = None
+                self._ema_scores      = {}
+                self._emotion_set_at  = None
+            return self._current_emotion, self._current_score, self._alert_on
+
+        raw_score = float(scores.get(emotion, 0.0))
+
+        # ── 전략 3: Confidence Threshold ──
+        if raw_score < self.conf_threshold:
+            self._low_conf_streak += 1
+            if self._low_conf_streak >= self.off_hold_frames:
+                self._alert_on        = False
+                self._current_emotion = None
+                self._current_score   = None
+                self._ema_scores      = {}
+                self._emotion_set_at  = None
+            return self._current_emotion, self._current_score, self._alert_on
+
+        self._low_conf_streak = 0
+
+        # ── 전략 1: Majority Voting ──
+        self._vote_buf.append(emotion)
+        vote_counts            = Counter(self._vote_buf)
+        top_emotion, top_count = vote_counts.most_common(1)[0]
+
+        group     = get_emotion_group(top_emotion)
+        min_votes = VOTE_MIN[group]
+
+        if len(self._vote_buf) < self.vote_window or top_count < min_votes:
+            return self._current_emotion, self._current_score, self._alert_on
+
+        voted_emotion = top_emotion
+
+        # ── 전략 2: EMA 업데이트 ──
+        if not self._ema_scores:
+            self._ema_scores = {k: float(v) for k, v in scores.items()}
+        else:
+            for k, v in scores.items():
+                prev = self._ema_scores.get(k, float(v))
+                self._ema_scores[k] = self.alpha * float(v) + (1.0 - self.alpha) * prev
+
+        stable_emotion = max(self._ema_scores, key=self._ema_scores.get)
+        stable_score   = self._ema_scores[stable_emotion]
+
+        if stable_emotion != voted_emotion:
+            return self._current_emotion, self._current_score, self._alert_on
+
+        # ── 전략 4: 최소 유지 시간 ──
+        self._try_set_emotion(stable_emotion, stable_score)
+
+        return self._current_emotion, self._current_score, self._alert_on
 
 # -----------------------------
 # 설정 (best.pth 학습 기준)
@@ -184,7 +312,7 @@ def main():
         target=run_realsense,
         kwargs=dict(
             shutdown_event=shutdown,
-            device_serial="254622073310",  # <- 석희 RealSense 시리얼로 바꿔줘
+            device_serial="254622073310",
             is_main_cam=True,
             on_frame=on_frame,
             width=1280, height=720, fps=30,
@@ -196,6 +324,16 @@ def main():
     fps_t0 = time.time()
     fps_n = 0
     fps = 0.0
+
+    # ── 감정 안정화기 초기화 ──
+    stabilizer = StableEmotionDetector(
+        vote_window=6,          # 최근 6번의 모델 결과
+        alpha=0.3,              # EMA 계수
+        conf_threshold=0.5,     # softmax 확률 임계값 (0~1)
+        off_hold_frames=3,      # Alert OFF 연속 저신뢰 프레임 수
+        min_hold_sec=0.5,       # 감정 최소 유지 시간 (초)
+    )
+    last_display = {"color": (0, 255, 0), "txt": ""}
 
     with mp_face.FaceMesh(
         static_image_mode=False,
@@ -215,6 +353,7 @@ def main():
             face, au, bbox = detect_face_and_au(frame, mesh)
 
             if face is None:
+                stabilizer.update(None, None)
                 cv2.putText(frame, "FaceMesh: no face", (20, 40),
                             cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
                 cv2.imshow("FER", frame)
@@ -233,7 +372,23 @@ def main():
 
             pred_i = int(pred.item())
             conf_f = float(conf.item())
-            emotion_label = f"{CLASS_NAMES[pred_i]}  {conf_f:.2f}"
+
+            # ── 안정화기에 전달할 scores dict 생성 (softmax 확률) ──
+            probs_np = prob[0].cpu().numpy()
+            raw_emotion = CLASS_NAMES[pred_i]
+            raw_scores  = {name: float(probs_np[i]) for i, name in enumerate(CLASS_NAMES)}
+
+            stable_emo, stable_score, alert_on = stabilizer.update(raw_emotion, raw_scores)
+
+            # 확정된 감정 기준으로 표시 (미확정 시 이전 값 유지)
+            if stable_emo is not None:
+                group     = get_emotion_group(stable_emo)
+                box_color = (0, 255, 0) if group == "sustained" else (255, 120, 0)
+                last_display["color"] = box_color
+                last_display["txt"]   = f"{stable_emo}  {stable_score:.2f}"
+
+            # raw 결과도 작게 표시 (디버그용)
+            raw_label = f"(raw: {raw_emotion} {conf_f:.2f})"
 
             # 4) FPS
             fps_n += 1
@@ -242,11 +397,13 @@ def main():
                 fps = 10.0 / (now - fps_t0 + 1e-9)
                 fps_t0 = now
 
-            # 5) 원본 프레임에 얼굴 박스 + 감정 표시
+            # 5) 원본 프레임에 얼굴 박스 + 안정화된 감정 표시
             bx1, by1, bx2, by2 = bbox
-            cv2.rectangle(frame, (bx1, by1), (bx2, by2), (0, 255, 0), 2)
-            cv2.putText(frame, emotion_label, (bx1, by1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+            cv2.rectangle(frame, (bx1, by1), (bx2, by2), last_display["color"], 2)
+            cv2.putText(frame, last_display["txt"], (bx1, by1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, last_display["color"], 2)
+            cv2.putText(frame, raw_label, (bx1, by2 + 22),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, (180, 180, 180), 1)
             cv2.putText(frame, f"FPS {fps:.1f}", (20, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 0), 2)
             cv2.imshow("FER", frame)
@@ -258,8 +415,7 @@ def main():
                 cv2.putText(dbg, AU_REGIONS[i][0][:3], (xpt + 4, ypt - 4),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.35, (0, 200, 255), 1)
 
-            # 클래스별 확률 막대 표시
-            probs_np = prob[0].cpu().numpy()
+            # 클래스별 확률 막대 표시 (probs_np는 위에서 이미 계산됨)
             bar_w = 224
             bar_panel = np.zeros((len(CLASS_NAMES) * 22 + 8, bar_w, 3), dtype=np.uint8)
             for ci, (cname, cp) in enumerate(zip(CLASS_NAMES, probs_np)):
