@@ -1,0 +1,175 @@
+{
+  "generated": "2026-03-05T14:08:37.823438",
+  "emotion_detection": {
+    "accuracy": 0.9767392479345224,
+    "emotional_precision": 0.9881449700801626,
+    "emotional_recall": 0.9846984698469847,
+    "emotional_f1": 0.9864187094956326,
+    "neutral_precision": 0.909562441814071,
+    "neutral_recall": 0.9287072243346007,
+    "n_samples": 51804,
+    "n_emotional": 44440,
+    "n_neutral": 7364
+  },
+  "emotion_classification": {
+    "accuracy_7class": 0.7965794147170102,
+    "accuracy_top2": 0.8977106014979538,
+    "accuracy_3class": 0.9316075978688905,
+    "per_class": {
+      "angry": {
+        "precision": 0.8624436787702093,
+        "recall": 0.8782726045883941,
+        "f1": 0.8702861727734689,
+        "support": 7410
+      },
+      "anxious": {
+        "precision": 0.6824817518248175,
+        "recall": 0.7104477611940299,
+        "f1": 0.6961840180827017,
+        "support": 7370
+      },
+      "happy": {
+        "precision": 0.9642094017094017,
+        "recall": 0.9721287195368251,
+        "f1": 0.9681528662420382,
+        "support": 7427
+      },
+      "hurt": {
+        "precision": 0.5670212765957446,
+        "recall": 0.721830985915493,
+        "f1": 0.6351286939942803,
+        "support": 7384
+      },
+      "neutral": {
+        "precision": 0.909562441814071,
+        "recall": 0.9287072243346007,
+        "f1": 0.9190351407646308,
+        "support": 7364
+      },
+      "sad": {
+        "precision": 0.8214361815469848,
+        "recall": 0.5195417789757413,
+        "f1": 0.6365062329728391,
+        "support": 7420
+      },
+      "surprised": {
+        "precision": 0.8386321132781192,
+        "recall": 0.8450666307713016,
+        "f1": 0.8418370767683538,
+        "support": 7429
+      }
+    },
+    "per_group_3class": {
+      "긍정(Positive)": {
+        "recall": 0.9174744211093161,
+        "support": 14856
+      },
+      "부정(Negative)": {
+        "recall": 0.9394267171444024,
+        "support": 29584
+      },
+      "중립(Neutral)": {
+        "recall": 0.9287072243346007,
+        "support": 7364
+      }
+    },
+    "n_classes": 7,
+    "n_samples": 51804
+  },
+  "arousal_valence": {
+    "multimodal_v3": {
+      "valence_accuracy": 0.9054,
+      "valence_f1": 0.9484,
+      "arousal_accuracy": 0.5835,
+      "arousal_f1": 0.5375,
+      "CCC_arousal": 0.2055,
+      "CCC_valence": 0.0877,
+      "n_folds": 6,
+      "model": "SelectiveSSM + Mamba (d=128, T=16)"
+    },
+    "kmer_fusion": {
+      "best_model": "KMERFusion_15tok",
+      "arousal_UAR": 60.016028765529505,
+      "arousal_UAR_std": 6.710331228201333,
+      "n_experiments": 8,
+      "n_folds": 6,
+      "model": "Pool-FFN + MHSA (15 tokens, ~97K params)"
+    }
+  },
+  "compound_emotion": {
+    "n_valid_segments": 2259,
+    "n_unique_labels": 12,
+    "n_total_labels": 13,
+    "coverage_ratio": 0.9230769230769231,
+    "distribution": {
+      "sad": {
+        "count": 664,
+        "ratio": 0.29393536963258077
+      },
+      "angry": {
+        "count": 487,
+        "ratio": 0.21558211598052235
+      },
+      "hurt": {
+        "count": 306,
+        "ratio": 0.13545816733067728
+      },
+      "surprised": {
+        "count": 252,
+        "ratio": 0.11155378486055777
+      },
+      "depressed": {
+        "count": 211,
+        "ratio": 0.0934041611332448
+      },
+      "anxious": {
+        "count": 135,
+        "ratio": 0.05976095617529881
+      },
+      "positive_engaged": {
+        "count": 76,
+        "ratio": 0.033643204957945996
+      },
+      "calm": {
+        "count": 51,
+        "ratio": 0.02257636122177955
+      },
+      "neutral": {
+        "count": 44,
+        "ratio": 0.019477644975652943
+      },
+      "excited": {
+        "count": 16,
+        "ratio": 0.007082779991146525
+      },
+      "happy": {
+        "count": 15,
+        "ratio": 0.006640106241699867
+      },
+      "stressed": {
+        "count": 2,
+        "ratio": 0.0008853474988933156
+      }
+    }
+  },
+  "kd_student": {
+    "best_student": "Student_heavy_KD",
+    "student_UAR": 59.18019033760487,
+    "student_UAR_std": 3.3262792133385997,
+    "teacher_UAR": 60.016028765529505,
+    "retention_ratio": 98.6073080056828,
+    "student_params": 67681,
+    "teacher_params": 97000,
+    "param_reduction": 0.30225773195876293,
+    "n_experiments": 6
+  },
+  "system_scores": {
+    "감정 감지 정확도": 0.9767392479345224,
+    "정서 분류 정확도 (3-class)": 0.9316075978688905,
+    "감정 분류 정확도 (7-class)": 0.7965794147170102,
+    "감정 분류 Top-2 정확도": 0.8977106014979538,
+    "Valence 분류 정확도": 0.9054,
+    "Valence F1": 0.9484
+  },
+  "system_score_weighted": 0.9178343039147556
+}

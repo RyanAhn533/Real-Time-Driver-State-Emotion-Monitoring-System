@@ -1,0 +1,200 @@
+[
+  {
+    "ablation_id": 1,
+    "name": "Student_no_KD",
+    "desc": "Student trained without KD (task loss only)",
+    "mean_A_UAR": 57.25116297205923,
+    "std_A_UAR": 3.470449065774949,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 57.587170001931334
+      },
+      {
+        "fold": 2,
+        "A_UAR": 58.19440075495439
+      },
+      {
+        "fold": 3,
+        "A_UAR": 61.91282122133186
+      },
+      {
+        "fold": 4,
+        "A_UAR": 56.00925970120758
+      },
+      {
+        "fold": 5,
+        "A_UAR": 59.19979180788225
+      },
+      {
+        "fold": 6,
+        "A_UAR": 50.60353434504792
+      }
+    ]
+  },
+  {
+    "ablation_id": 2,
+    "name": "Student_KD_full",
+    "desc": "Student + KD (0.5\u00d7CE + 0.3\u00d7MSE + 0.2\u00d7KL) \u2605",
+    "mean_A_UAR": 56.62328538805722,
+    "std_A_UAR": 5.449099856707861,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 56.01684717208183
+      },
+      {
+        "fold": 2,
+        "A_UAR": 60.060815770158335
+      },
+      {
+        "fold": 3,
+        "A_UAR": 62.520723956894166
+      },
+      {
+        "fold": 4,
+        "A_UAR": 48.7279843444227
+      },
+      {
+        "fold": 5,
+        "A_UAR": 62.05940737871599
+      },
+      {
+        "fold": 6,
+        "A_UAR": 50.353933706070286
+      }
+    ]
+  },
+  {
+    "ablation_id": 3,
+    "name": "Student_KD_feat_only",
+    "desc": "Student + feature KD only (MSE repr)",
+    "mean_A_UAR": 58.794084237375735,
+    "std_A_UAR": 4.192963328810229,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 57.85012850797047
+      },
+      {
+        "fold": 2,
+        "A_UAR": 61.18201291211671
+      },
+      {
+        "fold": 3,
+        "A_UAR": 64.30298424979276
+      },
+      {
+        "fold": 4,
+        "A_UAR": 52.89087235295054
+      },
+      {
+        "fold": 5,
+        "A_UAR": 62.34022465382009
+      },
+      {
+        "fold": 6,
+        "A_UAR": 54.198282747603834
+      }
+    ]
+  },
+  {
+    "ablation_id": 4,
+    "name": "Student_KD_logit_only",
+    "desc": "Student + logit KD only (KL arousal)",
+    "mean_A_UAR": 58.62216660666537,
+    "std_A_UAR": 3.221884710493952,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 58.39907295984311
+      },
+      {
+        "fold": 2,
+        "A_UAR": 57.72255426234665
+      },
+      {
+        "fold": 3,
+        "A_UAR": 60.96642718983145
+      },
+      {
+        "fold": 4,
+        "A_UAR": 59.87781012839483
+      },
+      {
+        "fold": 5,
+        "A_UAR": 62.44734676091799
+      },
+      {
+        "fold": 6,
+        "A_UAR": 52.31978833865815
+      }
+    ]
+  },
+  {
+    "ablation_id": 5,
+    "name": "Student_no_audio",
+    "desc": "Student + KD, no audio path (face+bio only)",
+    "mean_A_UAR": 58.398567466823266,
+    "std_A_UAR": 3.0107930000504877,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 55.65212223856428
+      },
+      {
+        "fold": 2,
+        "A_UAR": 59.710301232792574
+      },
+      {
+        "fold": 3,
+        "A_UAR": 64.28571428571428
+      },
+      {
+        "fold": 4,
+        "A_UAR": 56.384738994160976
+      },
+      {
+        "fold": 5,
+        "A_UAR": 55.86811271424421
+      },
+      {
+        "fold": 6,
+        "A_UAR": 58.49041533546326
+      }
+    ]
+  },
+  {
+    "ablation_id": 6,
+    "name": "Student_heavy_KD",
+    "desc": "Student + heavy KD (0.3\u00d7CE + 0.4\u00d7MSE + 0.3\u00d7KL)",
+    "mean_A_UAR": 59.18019033760487,
+    "std_A_UAR": 3.3262792133385997,
+    "folds": [
+      {
+        "fold": 1,
+        "A_UAR": 56.655672921216436
+      },
+      {
+        "fold": 2,
+        "A_UAR": 61.70703575547867
+      },
+      {
+        "fold": 3,
+        "A_UAR": 63.23224647692734
+      },
+      {
+        "fold": 4,
+        "A_UAR": 58.387825561230166
+      },
+      {
+        "fold": 5,
+        "A_UAR": 61.502614505664766
+      },
+      {
+        "fold": 6,
+        "A_UAR": 53.59574680511182
+      }
+    ]
+  }
+]
