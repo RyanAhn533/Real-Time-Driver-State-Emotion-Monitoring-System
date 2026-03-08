@@ -4,8 +4,23 @@
   <img src="kmer_system_architecture.png" width="850" alt="K-MER System Architecture"/>
 </p>
 
-> **산업부 전자부품산업기술개발 국책과제**
-> 실시간 운전자 감정·상태 모니터링 시스템 — NVIDIA Jetson Orin 타겟
+> **Korean Ministry of Trade, Industry and Energy — R&D Program**
+> Real-Time Driver Emotion & State Monitoring System — NVIDIA Jetson Orin
+
+---
+
+## Research Context
+
+Driver Monitoring Systems (DMS) traditionally focus on drowsiness detection or gaze tracking. However, real-world driving safety is also strongly affected by **driver emotional state**, including stress, anger, anxiety, and distraction.
+
+K-MER proposes a **real-time multimodal emotion recognition system** designed for in-vehicle deployment:
+
+- **Multimodal sensing** — vision + audio + physiological signals
+- **Lightweight cross-modal fusion** — <150K parameters
+- **Real-time edge deployment** — NVIDIA Jetson Orin platform
+- **Vehicle gateway interface** — 8-byte USB packet protocol
+
+This system was developed under a **Korean Ministry of Trade, Industry and Energy R&D program** targeting real-world automotive integration.
 
 ---
 
@@ -27,6 +42,25 @@ K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **
 | Status Flag | 주의분산 | 95.0% |
 | Status Flag | 졸음 | 96.0% |
 | Status Flag | 부정감정 | 99.8% |
+
+---
+
+## Key Contributions
+
+1. **Multimodal Driver Emotion Recognition**
+   — Vision, audio, and physiological signals combined in a unified fusion architecture
+
+2. **AU RoI Cross-Attention for Facial Expression**
+   — Action Unit region-aware attention with bilinear sampling over MobileViTv2 backbone
+
+3. **Lightweight Fusion Architecture**
+   — K-MER fusion module with only ~144K parameters (KD student: ~12K)
+
+4. **Real-Time Edge Deployment**
+   — End-to-end pipeline running on NVIDIA Jetson Orin at 30fps
+
+5. **Vehicle Interface Protocol**
+   — Driver emotion and state encoded into an 8-byte USB packet for automotive gateway systems
 
 ---
 
@@ -134,6 +168,24 @@ Jetson_thor/
 
 ---
 
+## Demo
+
+Example output from the real-time inference pipeline:
+
+```
+[Frame 142] ──────────────────────────────────
+  Emotion : 행복 (Happy)       confidence: 0.94
+  Stress  : False
+  Drowsy  : False
+  NegEmo  : False
+  Packet  : AA 01 05 02 41 8C 7F FE
+──────────────────────────────────────────────
+```
+
+<!-- TODO: Add demo.mp4 or demo.gif for real-time visualization -->
+
+---
+
 ## Quick Start
 
 ### Real-time Inference (Jetson)
@@ -206,6 +258,21 @@ if result:
 
 ---
 
+## Citation
+
+If you use this project in your research, please cite:
+
+```bibtex
+@article{ahn2026kmer,
+  title   = {K-MER: Korean Multimodal Emotion Recognition for Real-Time Driver Monitoring},
+  author  = {Ahn, Junyoung and Moon, Yeon-Kug},
+  year    = {2026},
+  note    = {Korean Ministry of Trade, Industry and Energy R\&D Program}
+}
+```
+
+---
+
 ## License
 
-This project is developed for the Korean government R&D program (산업부 전자부품산업기술개발).
+This project is developed under the Korean Ministry of Trade, Industry and Energy R&D program (산업부 전자부품산업기술개발).

@@ -118,6 +118,14 @@ def main():
     fig.patch.set_facecolor(C_BG)
 
     # ══════════════════════════════════════════════
+    # TOP LABEL: Real-time Driver Monitoring Pipeline
+    # ══════════════════════════════════════════════
+    ax.text(0.5, 0.993, "Real-time Driver Monitoring Pipeline",
+            ha="center", va="center", fontsize=11, color="#888888",
+            fontproperties=FONT_KR_MED, zorder=3,
+            style="italic")
+
+    # ══════════════════════════════════════════════
     # HEADER
     # ══════════════════════════════════════════════
     header = FancyBboxPatch(
@@ -132,7 +140,7 @@ def main():
             fontproperties=FONT_KR_BOLD, zorder=3)
 
     # Sub header
-    ax.text(0.5, 0.948, "산업부 전자부품산업기술개발 국책과제  |  실시간 운전자 감정·상태 모니터링  |  NVIDIA Jetson Orin",
+    ax.text(0.5, 0.948, "Korean Ministry of Trade, Industry and Energy R&D Program  |  Real-Time Driver Monitoring  |  NVIDIA Jetson Orin",
             ha="center", va="center", fontsize=8.5, color="#888888",
             fontproperties=FONT_KR, zorder=3)
 
