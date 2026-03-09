@@ -1,10 +1,50 @@
 import time
 import threading
+import os
+from sys import platform
+
+_WATCH_DIR = os.path.dirname(os.path.abspath(__file__))
 from serial.tools import list_ports
 from adi_study_watch import SDK
+import usb1
+import adi_study_watch.core.ble_manager as _bm
 
 VID, PID = 0x0456, 0x2CFE
-WATCH_MAC = "F9-5A-50-8B-B2-F9"
+WATCH_MAC = "F1-18-1C-93-7C-42"
+
+# BLEManager._open()은 getSerialNumber()가 타임아웃 나면 장치를 건너뜀.
+# cdc_acm 드라이버가 붙어있을 때 발생하는 문제. serial number 읽기 실패 시
+# VID/PID만으로 매칭하도록 패치.
+def _patched_ble_open(self):
+    context = usb1.USBContext()
+    device = None
+    for dev in context.getDeviceList(skip_on_error=True):
+        try:
+            if dev.getVendorID() != self.vendor_id or dev.getProductID() != self.product_id:
+                continue
+            try:
+                s_number = dev.getSerialNumber()
+                if s_number == self.dongle_serial_number:
+                    device = dev
+                    break
+            except Exception:
+                # serial number 읽기 실패 → VID/PID 일치 장치를 사용
+                device = dev
+                break
+        except Exception:
+            pass
+    if device is None:
+        raise Exception(f"Can't find BLE dongle with vendor_id={self.vendor_id}, "
+                        f"product_id={self.product_id} and serial_number={self.dongle_serial_number}.")
+    self.device = device.open()
+    self.device.resetDevice()
+    if platform in ("linux", "linux2"):
+        if self.device.kernelDriverActive(0):
+            self.device.detachKernelDriver(0)
+    self.device.claimInterface(0)
+    threading.Thread(target=self.receive_thread, daemon=True).start()
+
+_bm.BLEManager._open = _patched_ble_open
 
 def find_dongle(max_wait_s: int = 10):
     deadline = time.time() + max_wait_s
@@ -27,14 +67,24 @@ def run_watch(
 
     print(f"[WATCH] dongle port: {port}")
 
-    sdk = SDK(
-        serial_port_address=port,
-        mac_address=WATCH_MAC,
-        ble_vendor_id=VID,
-        ble_product_id=PID,
-        ble_timeout=60,
-        check_version=False,
-    )
+    sdk = None
+    for attempt in range(5):
+        try:
+            sdk = SDK(
+                serial_port_address=port,
+                mac_address=WATCH_MAC,
+                ble_vendor_id=VID,
+                ble_product_id=PID,
+                ble_timeout=60,
+                check_version=False,
+            )
+            break
+        except Exception as e:
+            print(f"[WATCH] SDK init attempt {attempt+1}/5 failed: {e}")
+            if attempt < 4:
+                time.sleep(2.0)
+    if sdk is None:
+        raise RuntimeError("SDK 초기화 실패 (5회 시도)")
 
     # 앱 핸들
     adpd_app = sdk.get_adpd_application()
@@ -44,9 +94,9 @@ def run_watch(
 
     # DCB 선택
     if pm_app.get_chip_id(pm_app.CHIP_ADPD4K)["payload"]["chip_id"] == 0xC0:
-        adpd_dcfg = "dcb_cfg/DVT1_MV_UC2_ADPD_dcb.dcfg"
+        adpd_dcfg = os.path.join(_WATCH_DIR, "dcb_cfg/DVT1_MV_UC2_ADPD_dcb.dcfg")
     else:
-        adpd_dcfg = "dcb_cfg/DVT2_MV_UC2_ADPD_dcb.dcfg"
+        adpd_dcfg = os.path.join(_WATCH_DIR, "dcb_cfg/DVT2_MV_UC2_ADPD_dcb.dcfg")
 
     def adpd_callback(data: dict):
         try:
@@ -95,7 +145,7 @@ def run_watch(
         pass
 
     try:
-        adpd_app.load_dcb_file(adpd_dcfg)
+        adpd_app.write_device_configuration_block_from_file(adpd_dcfg)
 
         adpd_app.start_sensor()
         temp_app.start_sensor()

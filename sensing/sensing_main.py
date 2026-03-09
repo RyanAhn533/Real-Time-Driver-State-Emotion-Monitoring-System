@@ -1,4 +1,5 @@
 import os, time, threading
+from collections import deque
 import numpy as np
 
 class Latest:
@@ -59,27 +60,22 @@ class BioQueues:
     # TODO: maxlen 512 적당한지 확인 필요
     def __init__(self, maxlen=512):
         self.lock = threading.Lock()
+        maxlen = int(maxlen)
         # ppg: ts, d1, d2
-        self.ppg = []
+        self.ppg = deque(maxlen=maxlen)
         # eda: ts,real
-        self.eda = []
+        self.eda = deque(maxlen=maxlen)
         # temp: ts,skin_c
-        self.temp = []
-        self.maxlen = int(maxlen)
-
-    def _append(self, arr, item):
-        arr.append(item)
-        if len(arr) > self.maxlen:
-            del arr[:len(arr)-self.maxlen]
+        self.temp = deque(maxlen=maxlen)
 
     def push_ppg(self, ts, d1, d2):
-        with self.lock: self._append(self.ppg, (int(ts), float(d1), float(d2)))
+        with self.lock: self.ppg.append((int(ts), float(d1), float(d2)))
 
     def push_eda(self, ts, real):
-        with self.lock: self._append(self.eda, (int(ts), float(real)))
+        with self.lock: self.eda.append((int(ts), float(real)))
 
     def push_temp(self, ts, skin_c):
-        with self.lock: self._append(self.temp, (int(ts), float(skin_c)))
+        with self.lock: self.temp.append((int(ts), float(skin_c)))
 
     def snapshot(self):
         with self.lock:

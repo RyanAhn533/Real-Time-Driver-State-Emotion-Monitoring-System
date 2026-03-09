@@ -20,7 +20,7 @@ def pick_input_device(keywords=None):
             best = i
             break
     if best is None:
-        best = sd.default.device[0]  # default input index
+        raise RuntimeError(f"RØDE 마이크를 찾지 못했습니다. 연결 상태를 확인하세요. (키워드: {keywords})")
     return best, sd.query_devices(best)
 
 def run_rode(
@@ -51,25 +51,51 @@ def run_rode(
         if on_audio_chunk is not None:
             on_audio_chunk(ts_ms, mono.astype(np.float32, copy=True), sr=sample_rate)
 
-    stream = sd.InputStream(
-        device=in_idx,
-        channels=use_ch,
-        samplerate=sample_rate,
-        blocksize=blocksize,
-        dtype="float32",
-        latency=latency,
-        callback=callback,
-    )
+    def open_stream(idx, ch):
+        s = sd.InputStream(
+            device=idx,
+            channels=ch,
+            samplerate=sample_rate,
+            blocksize=blocksize,
+            dtype="float32",
+            latency=latency,
+            callback=callback,
+        )
+        s.start()
+        return s
 
+    stream = None
     try:
-        stream.start()
+        stream = open_stream(in_idx, use_ch)
         while not shutdown_event.is_set():
             time.sleep(0.05)
-
-    finally:
+            if stream.closed:
+                print("[RODE] stream closed, reconnecting...")
+                time.sleep(1.0)
+                try:
+                    new_idx, new_dev = pick_input_device(KEYWORDS_IN)
+                    new_ch = 2 if int(new_dev.get("max_input_channels", 1)) >= 2 else 1
+                    stream = open_stream(new_idx, new_ch)
+                    print(f"[RODE] reconnected: {new_idx} / {new_dev.get('name')}")
+                except Exception as e:
+                    print(f"[RODE] reconnect failed: {e}, retrying...")
+    except Exception as e:
+        print(f"[RODE] stream error: {e}, retrying in 2s...")
+        time.sleep(2.0)
         try:
-            stream.stop()
-            stream.close()
-        except Exception:
-            pass
+            new_idx, new_dev = pick_input_device(KEYWORDS_IN)
+            new_ch = 2 if int(new_dev.get("max_input_channels", 1)) >= 2 else 1
+            print(f"[RODE] retry device: {new_idx} / {new_dev.get('name')}")
+            stream = open_stream(new_idx, new_ch)
+            while not shutdown_event.is_set():
+                time.sleep(0.05)
+        except Exception as e2:
+            print(f"[RODE] retry failed: {e2}")
+    finally:
+        if stream is not None:
+            try:
+                stream.stop()
+                stream.close()
+            except Exception:
+                pass
         print("[RODE] stopped")
