@@ -705,136 +705,503 @@ TEST 10: 10-class 출력 매핑 확인
 
 ---
 
-## 5. 데이터가 실제로 흐르는 경로
+## 5. 모달리티별 전체 정리 (풀 경로 포함)
 
-### 5.1 카메라 데이터 (얼굴)
+> 각 센서가 어떤 코드를 거쳐서 어떤 출력을 내는지, **실제 파일 풀 경로**와 함께 정리
 
-```
-[RealSense D435 카메라]
-        │ 30fps, 1280×720, BGR
-        ▼
-[realsense.py: run_realsense()]
-        │ on_frame(ts, frame) 콜백
-        ▼
-[ModelInputs.frame_main (Latest 버퍼)]
-        │ 최신 프레임 1개만 보관
-        ▼
-[KMERInferencer._process_face(frame)]
-        │
-        ├─ MediaPipe FaceMesh → 468개 랜드마크
-        ├─ 얼굴 bbox 추출 → 224×224로 리사이즈
-        ├─ AU(Action Unit) 8개 영역 좌표 추출
-        │
-        ├─ KFERExpert.extract(face, au_coords)
-        │   → kfer_probs: [0.01, 0.02, 0.85, 0.01, 0.05, 0.03, 0.03]  (7개 감정)
-        │   → quality: 0.92  (확신도)
-        │   → entropy: 0.45  (불확실성)
-        │
-        └─ FACSAuxExpert.extract(face)
-            → perclos: 0.15  (눈 감긴 비율)
-            → ear_mean: 0.28  (눈 열림 정도)
-            → facs_scores: [0.3, 0.1, 0.1, 0.5, 0.5, 0.0]  (6개 표정근육)
+---
 
-        ▼
-[KMERFusion 토큰: T1(kfer_probs), T2(meta), T3(stats), T11(perclos), T12(facs)]
-```
+### 5.1 Face (카메라)
 
-### 5.2 마이크 데이터 (음성)
+#### 센서 수집
 
-```
-[RODE Wireless GO II 마이크]
-        │ 48kHz, 8192 샘플/블록
-        ▼
-[rode.py: run_rode()]
-        │ 스테레오→모노 변환
-        │ on_audio_chunk(ts, mono, sr=48000) 콜백
-        ▼
-[ModelInputs.audio (Ring1D 원형 버퍼, 2초 = 96,000 샘플)]
-        │
-        ▼
-[KMERInferencer._process_audio(audio)]
-        │
-        ├─ librosa.resample(48kHz → 16kHz)
-        │   → 96,000 → 32,000 샘플
-        │
-        ├─ Emotion2VecExpert.extract(waveform_16k)
-        │   → emo2vec_probs: [0.05,0.01,0.02,0.6,0.2,0.02,0.05,0.03,0.02] (9개)
-        │   → embed: (1024,)  (고차원 임베딩)
-        │
-        └─ AudeeringExpert.extract(waveform_16k)
-            → avd: [0.65, 0.72, 0.45]  (arousal, valence, dominance)
+| 항목 | 내용 |
+|------|------|
+| **센서** | Intel RealSense D435 (시리얼: `021222070391`) |
+| **해상도** | 1280×720, 30fps, BGR |
+| **드라이버 코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/realsense.py` |
+| **드라이버 함수** | `run_realsense(shutdown_event, device_serial, on_frame, ...)` |
+| **버퍼** | `Latest` 클래스 (최신 프레임 1개만 보관) |
+| **버퍼 정의** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/sensing_main.py` → `Latest` 클래스 |
 
-        ▼
-[KMERFusion 토큰: T4(emo2vec), T5(audeering), T6(audio_quality)]
-```
+#### 전처리 (얼굴 검출 + AU 추출)
 
-### 5.3 시계 데이터 (생체신호)
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/kmer_inferencer.py` |
+| **함수** | `KMERInferencer._process_face(frame_bgr)` |
+| **내부 동작** | MediaPipe FaceMesh → 468개 랜드마크 → bbox 추출(20% 패딩) → 224×224 크롭 → AU 좌표 8개 영역 추출 |
+| **AU 영역 정의** | 같은 파일 내 `_AU_REGIONS` 상수 (이마, 왼눈, 오른눈, 코, 왼볼, 오른볼, 입, 턱) |
+
+#### Expert 1: KFERExpert (얼굴 감정 7개)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/experts/kfer_expert.py` |
+| **클래스** | `KFERExpert` (line 75) |
+| **내부 모델** | `AUFERModel` — 정의: `/home/ajy/Jetson_thor/emotion_system/models/fer_model.py` (line 35) |
+| **백본** | MobileViTv2 — 정의: `/home/ajy/Jetson_thor/emotion_system/models/backbones/mobilevit_v3.py` → `MobileViTBackbone` |
+| **AU 퓨전** | Cross-Attention — 정의: `/home/ajy/Jetson_thor/emotion_system/models/fusion/cross_attention.py` → `CrossAttentionFusion` |
+| **체크포인트** | `/home/ajy/Jetson_thor/emotion_system/result/best.pth` |
 
 ```
-[ADI Study Watch 손목시계]
-        │ BLE 무선 통신
-        ▼
-[watch.py: run_watch()]
-        │ adpd_callback → on_ppg(ts, d1, d2)
-        │ eda_callback  → on_eda(ts, real)
-        │ temp_callback → on_temp(ts, skin_c)
-        ▼
-[ModelInputs.bio (BioQueues - 3개 deque)]
-        │
-        ▼
-[KMERInferencer._process_bio(ppg, eda, temp)]
-        │
-        └─ bio_expert.extract_bio_features_v2(npz_data)
-            → bvp_features: [72.5, 45.2, 38.1, 1.8]       (심박 HRV 4개)
-            → eda_features: [2.1, 0.5, 3, 0.8, 15.2]       (피부전도 5개)
-            → hr_temp_features: [72.5, 3.2, 15.0, 36.2, -0.01, 0.3] (심박+체온 6개)
+입력: 얼굴 크롭 (3, 224, 224) + AU 좌표 (8, 2)
+      │
+      ▼
+MobileViTv2 백본 (5M params, 1회 forward)
+      │ feature_map [B, 384, h, w]
+      ▼
+AU RoI Extract → 8개 AU 토큰 추출
+      │
+      ▼
+CrossAttentionFusion (CLS가 AU 토큰에 attention)
+      │
+      ▼
+FER Head → 7-class softmax
 
-        ▼
-[KMERFusion 토큰: T7(bvp), T8(eda), T9(hr_temp), T10(bio_quality)]
+출력:
+  kfer_probs (7,)  : [angry 0.05, anxious 0.02, happy 0.85, hurt 0.01, neutral 0.05, sad 0.01, surprised 0.01]
+  kfer_meta  (2,)  : [quality=0.92, entropy=0.45]
+  face_stats (3,)  : [max_conf=0.85, mean_conf=0.14, std_conf=0.28]
 ```
 
-### 5.4 퓨전 → 최종 출력
+#### Expert 2: FACSAuxExpert (눈/표정근육)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/experts/facs_aux.py` |
+| **클래스** | `FACSAuxExpert` (line 122) |
+| **PERCLOS 계산** | `/home/ajy/Jetson_thor/emotion_system/models/drowsiness/perclos.py` → `compute_ear()`, `compute_perclos()` |
+| **EAR 임계값** | 0.21 미만 → 눈 감김 (설정: `sensing_config.yaml` → `thresholds.ear_closed`) |
 
 ```
-[14개 feature 토큰 + 1개 CLS 토큰]
-        │
-        ▼
-[KMERFusion Model]
-        │ Pool-FFN → MHSA(4-head) → CLS Pooling → Output Heads
-        │
-        ├─ arousal: 0.65 (각성도)
-        ├─ valence: 0.72 (쾌불쾌)
-        └─ drowsy: 0 (정상)
-        │
-        ▼
-[CompoundEmotionMapper]
-        │ happy + mid arousal → "positive_engaged"
-        │
-        ▼
-[TemporalSmoother]
-        │ 7프레임 다수결 + EMA 필터
-        │
-        ▼
-[E2EPipeline._compute_ten_class()]
-        │
-        ├─ emotion_code: 4 (행복)
-        ├─ stress: False
-        ├─ low_attention: False
-        ├─ drowsy: False
-        │
-        ▼
-[FatigueTracker]
-        │ 피로 조건 미충족 → fatigue: False
-        │
-        ▼
-[PacketEncoder.encode()]
-        │ → 0xAA 01 08 02 40 60 XX FE (8바이트)
-        │
-        ▼
-[GatewaySender.send()]
-        │ → USB 시리얼로 차량 ECU에 전송
-        ▼
-[차량: "운전자 행복, 정상 상태"]
+입력: MediaPipe 랜드마크 (468개)
+      │
+      ├─ EAR (Eye Aspect Ratio) 계산 → 눈 높이/너비
+      ├─ PERCLOS 계산 → 최근 N 프레임 중 눈 감긴 비율
+      └─ FACS geometric scores → 6개 표정근육 강도
+
+출력:
+  perclos_ear  (2,)  : [PERCLOS=0.15, mean_EAR=0.28]
+  facs_scores  (6,)  : [이마, 좌눈썹, 우눈썹, 코주름, 좌입꼬리, 우입꼬리]
+```
+
+#### Face가 KMERFusion에 제공하는 토큰 (5개)
+
+| 토큰 | 이름 | 차원 | 코드 출처 |
+|------|------|------|----------|
+| T1 | kfer_probs | 7 → 64 | `kfer_expert.py` → `KFERExpert` |
+| T2 | kfer_meta | 2 → 64 | `kfer_expert.py` → `KFERExpert` |
+| T3 | face_stats | 3 → 64 | `kmer_inferencer.py` → `_process_face()` |
+| T11 | perclos_ear | 2 → 64 | `facs_aux.py` → `FACSAuxExpert` |
+| T12 | facs_scores | 6 → 64 | `facs_aux.py` → `FACSAuxExpert` |
+
+#### Face로 직접 판정하는 항목
+
+| 판정 항목 | 판정 로직 | 코드 위치 |
+|-----------|----------|----------|
+| **Emotion 6개** | kfer_probs argmax → KFER_TO_PROTOCOL 매핑 | `/home/ajy/Jetson_thor/sensing/pipeline/e2e_pipeline.py` → `_compute_ten_class()` |
+| **Low Attention** | PERCLOS ∈ [0.2, 0.4) | `/home/ajy/Jetson_thor/sensing/pipeline/e2e_pipeline.py` → `_compute_ten_class()` |
+| **Drowsy** | PERCLOS ≥ 0.4 (NHTSA 표준) | `/home/ajy/Jetson_thor/sensing/pipeline/e2e_pipeline.py` → `_compute_ten_class()` |
+
+---
+
+### 5.2 Audio (마이크)
+
+#### 센서 수집
+
+| 항목 | 내용 |
+|------|------|
+| **센서** | RODE Wireless GO II 무선 마이크 |
+| **스펙** | 48kHz, 8192 샘플/블록 |
+| **드라이버 코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/rode.py` |
+| **드라이버 함수** | `run_rode(shutdown_event, on_audio_chunk, ...)` / `pick_input_device()` |
+| **버퍼** | `Ring1D` 클래스 (원형 버퍼, 2초 = 96,000 샘플) |
+| **버퍼 정의** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/sensing_main.py` → `Ring1D` 클래스 |
+
+#### 전처리 (리샘플링)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/kmer_inferencer.py` |
+| **함수** | `_resample_audio(audio, src_sr=48000, dst_sr=16000)` (librosa 사용) |
+| **변환** | 48kHz → 16kHz (96,000 → 32,000 샘플) |
+
+#### Expert 3: Emotion2VecExpert (음성 감정 9개)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/experts/audio_expert.py` |
+| **클래스** | `Emotion2VecExpert` (line 20) |
+| **기반 모델** | FunASR `emotion2vec_plus_large` (frozen, 1024d) |
+| **의존 라이브러리** | `funasr` |
+
+```
+입력: 16kHz 모노 오디오 (32,000 샘플 ≈ 2초)
+      │
+      ▼
+emotion2vec_plus_large (frozen encoder)
+      │
+      ▼
+출력:
+  emo2vec_probs (9,) : [angry, disgusted, fearful, happy, neutral,
+                        other, sad, surprised, unknown]
+```
+
+#### Expert 4: AudeeringExpert (음성 arousal/valence)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/experts/audio_expert.py` |
+| **클래스** | `AudeeringExpert` (line 100) |
+| **기반 모델** | audeering wav2vec2 (arousal/valence/dominance 3-output) |
+| **의존 라이브러리** | `transformers` |
+
+```
+입력: 16kHz 모노 오디오
+      │
+      ▼
+wav2vec2 (audeering pretrained)
+      │
+      ▼
+출력:
+  audeering_avd (3,) : [arousal=0.65, valence=0.72, dominance=0.45]
+```
+
+#### 오디오 품질 (수작업 계산)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/kmer_inferencer.py` |
+| **함수** | `_compute_audio_quality(audio)` |
+
+```
+출력:
+  audio_quality (3,) : [RMS_norm, ZCR(영점교차율), SNR_est]
+  audio_valid = True if RMS > 0.01
+```
+
+#### Audio가 KMERFusion에 제공하는 토큰 (3개)
+
+| 토큰 | 이름 | 차원 | 코드 출처 |
+|------|------|------|----------|
+| T4 | emo2vec_probs | 9 → 64 | `audio_expert.py` → `Emotion2VecExpert` |
+| T5 | audeering_avd | 3 → 64 | `audio_expert.py` → `AudeeringExpert` |
+| T6 | audio_quality | 3 → 64 | `kmer_inferencer.py` → `_compute_audio_quality()` |
+
+#### Audio가 기여하는 판정 항목
+
+| 판정 항목 | 기여 방식 |
+|-----------|----------|
+| **Stress** | audeering → arousal 예측에 영향 → arousal > 0.6이면 Stress 판정에 간접 기여 |
+| **Fatigue** | arousal 예측 정확도 향상 → arousal < 0.3이 30초 지속 시 Fatigue |
+
+---
+
+### 5.3 Bio (손목시계)
+
+#### 센서 수집
+
+| 항목 | 내용 |
+|------|------|
+| **센서** | ADI Study Watch (BLE 무선) |
+| **MAC** | `F1-18-1C-93-7C-42` |
+| **BLE 동글** | VID=0x0456, PID=0x2CFE |
+| **드라이버 코드** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/watch.py` |
+| **드라이버 함수** | `run_watch(shutdown_event, on_ppg, on_eda, on_temp)` / `find_dongle()` |
+| **버퍼** | `BioQueues` 클래스 (3개 deque: PPG, EDA, TEMP) |
+| **버퍼 정의** | `/home/ajy/Jetson_thor/sensing/raw_sensing_code/Real-Time-Driver-State-Emotion-Monitoring-System-ysh_sensing_260305/sensing/sensing_main.py` → `BioQueues` 클래스 |
+
+#### 3가지 센서 스트림
+
+| 스트림 | 콜백 | 데이터 형식 |
+|--------|------|-----------|
+| **PPG** (맥박/광용적맥파) | `on_ppg(ts, d1, d2)` | 2채널 PPG 신호 |
+| **EDA** (전기피부반응) | `on_eda(ts, real)` | 피부전도 실수값 |
+| **TEMP** (체온) | `on_temp(ts, skin_c)` | 피부 온도 (°C) |
+
+#### Expert 5: BioExpert (생체 특징 15개)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/experts/bio_expert.py` |
+| **함수** | `extract_bio_features_v2()` (line 124) |
+| **의존 라이브러리** | `neurokit2`, `scipy` |
+| **모델** | 없음 (수작업 특징 추출, 딥러닝 아님) |
+
+```
+입력: PPG/EDA/TEMP 시계열 데이터
+      │
+      ├─ PPG → NeuroKit2 HRV 분석
+      │   → bvp_features (4,) : [mean_hr=72.5, sdnn=45.2, rmssd=38.1, lf_hf=1.8]
+      │
+      ├─ EDA → NeuroKit2 SCR 분석
+      │   → eda_features (5,) : [mean_scl=2.1, std_scl=0.5, n_peaks=3, amplitude=0.8, auc=15.2]
+      │
+      ├─ HR+TEMP → 직접 통계 계산
+      │   → hr_temp_features (6,) : [hr_mean, hr_std, hr_range, temp_mean, temp_slope, temp_range]
+      │
+      └─ 품질 계산
+          → bio_quality (3,)
+```
+
+#### Bio가 KMERFusion에 제공하는 토큰 (4개)
+
+| 토큰 | 이름 | 차원 | 코드 출처 |
+|------|------|------|----------|
+| T7 | bvp_features | 4 → 64 | `bio_expert.py` → `extract_bio_features_v2()` |
+| T8 | eda_features | 5 → 64 | `bio_expert.py` → `extract_bio_features_v2()` |
+| T9 | hr_temp_features | 6 → 64 | `bio_expert.py` → `extract_bio_features_v2()` |
+| T10 | bio_quality | 3 → 64 | `bio_expert.py` → `extract_bio_features_v2()` |
+
+#### Bio가 기여하는 판정 항목
+
+| 판정 항목 | 기여 방식 |
+|-----------|----------|
+| **Stress** | HRV LF/HF + EDA peaks → arousal 예측 정확도 향상 → Stress 판정 보조 |
+| **Fatigue** | arousal < 0.3이 30초 지속 조건 판정에 직접 기여 |
+
+---
+
+### 5.4 Meta 토큰 (2개)
+
+| 토큰 | 이름 | 차원 | 코드 출처 | 설명 |
+|------|------|------|----------|------|
+| T13 | cross_modal | 3 → 64 | `kmer_inferencer.py` → `_compute_cross_modal()` | 모달리티 간 일치도 (face-audio 일치, AV 일관성, entropy 격차) |
+| T14 | validity_flags | 3 → 64 | `kmer_inferencer.py` → `_build_feature_dict()` | [face 유효, audio 유효, bio 유효] |
+
+---
+
+### 5.5 퓨전 (모든 토큰 합치기)
+
+#### KMERFusion 모델
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/fusion/kmer_fusion.py` |
+| **클래스** | `KMERFusion(nn.Module)` (line 74) |
+| **파라미터** | ~144,000개 (매우 가벼움) |
+| **체크포인트** | `/home/ajy/Jetson_thor/multimodal_dms/results_kmer/best_model.pth` |
+| **학습 코드** | `/home/ajy/Jetson_thor/multimodal_dms/train_kmer.py` |
+
+```
+Face 토큰 5개 (T1~T3, T11~T12)  ─┐
+Audio 토큰 3개 (T4~T6)           ─┤→ 14개 토큰 + CLS = 15개 × 64d
+Bio 토큰 4개 (T7~T10)            ─┤
+Meta 토큰 2개 (T13~T14)          ─┘
+      │
+      ▼ Stage 1: Token Formation (각 토큰을 Linear로 64d에 투영)
+      │
+      ▼ Stage 2: Intra-Modal Pool-FFN (같은 모달리티 토큰끼리 지역 패턴)
+      │   Face(T1~T3,T11~T12) / Audio(T4~T6) / Bio(T7~T10) 각각
+      │
+      ▼ Stage 3: Global Cross-Modal MHSA (4-head, 모든 토큰 간 attention)
+      │   센서 고장 토큰은 valid_mask로 마스킹(무시)
+      │
+      ▼ Stage 4: CLS Pooling (CLS 토큰이 전체 요약 → 64d 벡터 1개)
+      │
+      ▼ Stage 5: Bi-GRU (시간 맥락, 현재 미사용)
+      │
+      ▼ Stage 6: Output Heads
+      │
+      ├─ arousal head: 64d → Linear(64,1) → sigmoid → [0, 1]
+      ├─ valence head: 64d → Linear(64,1) → sigmoid → [0, 1]
+      └─ drowsy head:  64d → Linear(64,3) → softmax → [alert, drowsy, sleeping]
+```
+
+#### CompoundEmotionMapper (복합 감정)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/fusion/compound_emotion.py` |
+| **클래스** | `CompoundEmotionMapper` (line 83) |
+| **방식** | 규칙 기반 (AI 모델 아님) |
+
+```
+K-FER 감정 + arousal 레벨 → 13가지 복합 감정
+
+예시:
+  happy  + low arousal  → "happy"
+  happy  + mid arousal  → "positive_engaged"
+  happy  + high arousal → "excited"
+  neutral + low arousal → "calm"
+  anxious + high arousal → "stressed"
+  sad    + low arousal  → "depressed"
+  drowsy 상태            → "drowsy"
+```
+
+---
+
+### 5.6 후처리 파이프라인 (퓨전 후 → 최종 판정)
+
+#### Temporal Smoother (떨림 방지)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/pipeline/temporal_smoother.py` |
+| **클래스** | `MultimodalTemporalSmoother` / `MajorityVoteSmoother` / `EMASmoother` |
+
+```
+KMERFusion 원본 출력 → Temporal Smoother
+  │
+  ├─ kfer_emotion → MajorityVoteSmoother(window=7)  → smoothed_kfer_emotion
+  ├─ drowsy       → MajorityVoteSmoother(window=5)  → smoothed_drowsy
+  ├─ compound     → MajorityVoteSmoother(window=7)  → smoothed_compound
+  ├─ arousal      → EMASmoother(alpha=0.3)           → smoothed_arousal
+  └─ valence      → EMASmoother(alpha=0.3)           → smoothed_valence
+```
+
+#### 10-class 판정
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/pipeline/e2e_pipeline.py` |
+| **함수** | `E2EPipeline._compute_ten_class(smoothed)` |
+
+```
+smoothed 결과 → 10가지 판정
+
+Emotion 6개:
+  smoothed_kfer_emotion → KFER_TO_PROTOCOL 매핑 → emotion_code (0~5)
+  매핑 테이블 정의: /home/ajy/Jetson_thor/multimodal_dms/gateway/packet_encoder.py
+    KFER_TO_PROTOCOL = {0:2, 1:0, 2:4, 3:3, 4:5, 5:3, 6:1}
+
+Driver State 4개:
+  stress        = (kfer ∈ {angry,anxious}) AND (arousal > 0.6)
+  low_attention = (0.2 ≤ PERCLOS < 0.4)
+  drowsy        = (PERCLOS ≥ 0.4) OR (drowsy_level ≥ 1)
+  fatigue       = FatigueTracker 결과
+```
+
+#### Fatigue Tracker (피로 감지)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/pipeline/fatigue_tracker.py` |
+| **클래스** | `FatigueTracker` (line 36) |
+
+```
+3개 조건 중 하나라도 충족 → fatigue = True
+
+조건1: compound_label ∈ {"depressed", "calm"} 이 30초 이상 연속
+조건2: arousal < 0.3 이 30초 이상 연속
+조건3: drowsy 가 10초 이상 연속
+```
+
+#### PacketEncoder (8바이트 패킷)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/multimodal_dms/gateway/packet_encoder.py` |
+| **클래스** | `PacketEncoder` (line 149) |
+| **보조 클래스** | `StressDetector` (line 86), `AttentionDetector` (line 105), `DrowsyDetector` (line 120), `NegativeEmotionDetector` (line 134) |
+
+```
+10-class 판정 결과 → 8바이트 이진 패킷
+
+Byte 0: 0xAA (시작)
+Byte 1: 0x01 (타입)
+Byte 2: 순번 (0~255)
+Byte 3: 0x02 (길이)
+Byte 4: [감정코드 4bit][스트레스 1bit][주의력저하 1bit][졸음 1bit][종료 1bit]
+Byte 5: [감정강도 3bit][상태강도 3bit][부정감정 1bit][예약 1bit]
+Byte 6: CRC8 (체크섬)
+Byte 7: 0xFE (끝)
+```
+
+#### Gateway Sender (USB 전송)
+
+| 항목 | 내용 |
+|------|------|
+| **코드** | `/home/ajy/Jetson_thor/sensing/pipeline/gateway_sender.py` |
+| **클래스** | `GatewaySender` (line 33) / `NullGatewaySender` |
+| **포트** | `/dev/ttyUSB0` (설정: `sensing_config.yaml` → `gateway.port`) |
+| **속도** | 115200 baud |
+
+---
+
+### 5.7 모달리티 × 판정항목 기여 매트릭스
+
+```
+                    Face 토큰 5개
+                         │
+                    Audio 토큰 3개  ──→  KMERFusion ──→ arousal ──→ Stress, Fatigue
+                         │                              valence
+                    Bio 토큰 4개                        drowsy ──→ Drowsy, Fatigue
+                         │
+                    Meta 토큰 2개
+                    (cross_modal + validity)
+```
+
+| 판정 항목 | Face | Audio | Bio | 퓨전 후 | 판정 코드 위치 |
+|-----------|------|-------|-----|---------|---------------|
+| **Emotion 6개** | ◎ | | | | `e2e_pipeline.py` → `_compute_ten_class()` |
+| **Stress** | ○ | ○ | ○ | ◎ | `e2e_pipeline.py` → `_compute_ten_class()` |
+| **Low Attention** | ◎ | | | | `e2e_pipeline.py` → `_compute_ten_class()` |
+| **Drowsy** | ◎ | | | ○ | `e2e_pipeline.py` → `_compute_ten_class()` |
+| **Fatigue** | | | ○ | ◎ | `fatigue_tracker.py` → `FatigueTracker.update()` |
+
+```
+◎ = 주 입력 (이 모달리티가 직접 판정)
+○ = 보조 입력 (퓨전을 통해 간접 기여)
+```
+
+---
+
+### 5.8 전체 데이터 흐름 한눈에 보기 (풀 경로)
+
+```
+[센서 수집] ──────────────────────────────────────────────────────────────────
+│
+├─ RealSense D435 ─────→ realsense.py ──→ Latest 버퍼 ────┐
+│   (30fps, 1280×720)     run_realsense()   frame_main     │
+│                                                          │
+├─ RODE Wireless GO II ─→ rode.py ──────→ Ring1D 버퍼 ─────┤ ModelInputs
+│   (48kHz mono)          run_rode()       audio           │ (공유)
+│                                                          │
+└─ ADI Study Watch ─────→ watch.py ─────→ BioQueues 버퍼 ──┘
+    (BLE: PPG/EDA/TEMP)   run_watch()      bio
+│
+│  0.1초(10Hz)마다 버퍼에서 최신 데이터 가져옴
+│
+[AI 추론] ────────────────────────────────────────────────────────────────────
+│
+│  kmer_inferencer.py → KMERInferencer.forward()
+│
+├─ _process_face(frame) ────────────────────────────────────────────────────
+│   │ MediaPipe FaceMesh → 얼굴 크롭 224×224 + AU 좌표 8개
+│   ├─ kfer_expert.py → KFERExpert     → kfer_probs(7), meta(2), stats(3)
+│   └─ facs_aux.py    → FACSAuxExpert  → perclos_ear(2), facs_scores(6)
+│
+├─ _process_audio(audio) ───────────────────────────────────────────────────
+│   │ librosa 48kHz→16kHz 리샘플링
+│   ├─ audio_expert.py → Emotion2VecExpert → emo2vec_probs(9)
+│   ├─ audio_expert.py → AudeeringExpert   → audeering_avd(3)
+│   └─ 직접 계산                            → audio_quality(3)
+│
+├─ _process_bio(ppg, eda, temp) ────────────────────────────────────────────
+│   └─ bio_expert.py → extract_bio_features_v2()
+│      → bvp(4) + eda(5) + hr_temp(6) + bio_quality(3)
+│
+├─ _build_feature_dict() → 14개 토큰 + valid_mask
+│
+└─ kmer_fusion.py → KMERFusion.forward()
+   → arousal, valence, drowsy
+│
+│  compound_emotion.py → CompoundEmotionMapper → compound_label (13가지)
+│
+[후처리] ─────────────────────────────────────────────────────────────────────
+│
+│  e2e_pipeline.py → E2EPipeline.process_cycle()
+│
+├─ temporal_smoother.py → 다수결(7프레임) + EMA(alpha=0.3) → 안정화
+├─ e2e_pipeline.py      → _compute_ten_class() → 6감정 + Stress/LowAttn/Drowsy
+├─ fatigue_tracker.py   → FatigueTracker.update() → Fatigue
+├─ packet_encoder.py    → PacketEncoder.encode() → 8바이트 패킷
+└─ gateway_sender.py    → GatewaySender.send()   → USB 시리얼 전송
+│
+▼
+[차량 ECU: 운전자 상태에 따라 경고/조치]
 ```
 
 ---
