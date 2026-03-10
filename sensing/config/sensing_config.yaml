@@ -1,0 +1,77 @@
+# K-MER Sensing System Configuration
+# ====================================
+# 모든 하드코딩된 값을 여기에 모아 관리합니다.
+# 하드웨어 교체 시 이 파일만 수정하면 됩니다.
+
+hardware:
+  realsense_main:
+    serial: "021222070391"
+    width: 1280
+    height: 720
+    fps: 30
+  realsense_sub:
+    serial: "405622073483"
+    enabled: false            # 서브카메라 비활성화 (현재 미사용)
+    width: 1280
+    height: 720
+    fps: 30
+  rode:
+    sample_rate: 48000
+    blocksize: 8192
+    latency: 0.5
+    keywords:
+      - "Wireless GO II"
+      - "RØDE"
+      - "RODE"
+      - "Wireless GO"
+      - "GO II"
+  watch:
+    vid: 0x0456
+    pid: 0x2CFE
+    mac: "F1-18-1C-93-7C-42"
+    ble_timeout: 60
+    sdk_retry: 5              # SDK 초기화 재시도 횟수
+    dongle_wait_sec: 10       # 동글 검색 대기 시간
+
+inference:
+  hz: 10                      # 추론 루프 주기 (Hz)
+  device: "cuda"              # "cuda" or "cpu"
+  kfer_ckpt: "../emotion_system/result/best.pth"
+  kmer_ckpt: "../multimodal_dms/results_kmer/best_model.pth"
+  audio_sec: 2.0              # 오디오 링 버퍼 길이 (초)
+  audio_sr: 48000             # 오디오 소스 샘플레이트
+  enable_audio_experts: true  # emotion2vec + audeering 사용
+  enable_face_expert: false   # HSEmotion FaceExpert 사용
+
+thresholds:
+  ear_closed: 0.21            # 눈 감김 EAR threshold
+  perclos_low_attn: 0.2       # Low Attention 하한
+  perclos_drowsy: 0.4         # Drowsy threshold (NHTSA 표준)
+  arousal_stress: 0.6         # Stress 판정 arousal threshold
+  fatigue_arousal: 0.3        # Fatigue 판정 arousal threshold
+  fatigue_duration_sec: 30    # Fatigue 지속 시간 (초)
+  fatigue_drowsy_sec: 10      # Drowsy → Fatigue 전환 시간 (초)
+
+gateway:
+  enabled: true
+  port: "/dev/ttyUSB0"        # USB serial 포트
+  baudrate: 115200
+  timeout: 1.0                # serial timeout (초)
+  retry_interval: 5.0         # 재연결 간격 (초)
+
+temporal_smoothing:
+  emotion_window: 7           # 감정 majority vote 윈도우
+  drowsy_window: 5            # drowsy majority vote 윈도우
+  compound_window: 7          # compound emotion majority vote 윈도우
+  ema_alpha: 0.3              # arousal/valence EMA 계수
+
+shadow_mode:
+  enabled: true               # Shadow mode ON (기존 파이프라인과 병렬 비교)
+  log_comparison: true        # old vs new 결과 로그 비교
+
+logging:
+  console_level: "INFO"       # 콘솔 로그 레벨
+  file_level: "DEBUG"         # 파일 로그 레벨
+  log_dir: "logs"             # 로그 파일 디렉토리 (sensing/ 기준 상대경로)
+  max_bytes: 10485760         # 로그 파일 최대 크기 (10MB)
+  backup_count: 5             # 로그 파일 보관 개수
