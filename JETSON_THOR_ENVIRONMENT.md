@@ -255,5 +255,69 @@ RAM 사용:     5.7GB / 122GB (4.7%)
 
 ---
 
+## 6. 원격 접속 (Remote Access)
+
+### 6.1 VS Code Tunnel (브라우저에서 바로 접속)
+
+Jetson Thor에 VS Code Tunnel이 systemd 서비스로 등록되어 있습니다.
+**Jetson이 켜져 있으면 어디서든 접속 가능합니다.**
+
+| 항목 | 값 |
+|------|-----|
+| 접속 URL | **https://vscode.dev/tunnel/jetson** |
+| 터널 이름 | `jetson` |
+| 인증 | GitHub 계정 (RyanAhn533) |
+| 서비스 상태 확인 | `systemctl --user status code-tunnel.service` |
+| 로그 확인 | `code tunnel service log` |
+| 자동 시작 | 부팅 시 자동 실행 (systemd enabled) |
+
+**접속 방법:**
+1. 아무 브라우저에서 https://vscode.dev/tunnel/jetson 접속
+2. GitHub 로그인 (RyanAhn533)
+3. 바로 VS Code 환경 사용 가능 (터미널, 파일 편집, Git 전부 가능)
+
+**또는 VS Code 데스크톱 앱에서:**
+1. VS Code 열기
+2. `Ctrl+Shift+P` → "Remote-Tunnels: Connect to Tunnel"
+3. `jetson` 선택
+
+### 6.2 SSH (같은 네트워크/VPN 내에서)
+
+| 항목 | 값 |
+|------|-----|
+| 내부 IP | `223.195.35.106` (세종대 내부 네트워크) |
+| USB IP | `192.168.55.1` (USB 직결 시) |
+| 포트 | 22 |
+| X11 포워딩 | 활성화 |
+
+```bash
+# 같은 네트워크에서 SSH 접속
+ssh jetson@223.195.35.106
+
+# GUI 앱 포워딩
+ssh -X jetson@223.195.35.106
+
+# 파일 전송
+scp local_file.py jetson@223.195.35.106:~/work/
+```
+
+### 6.3 서비스 관리 명령어
+
+```bash
+# 터널 상태 확인
+systemctl --user status code-tunnel.service
+
+# 터널 재시작
+systemctl --user restart code-tunnel.service
+
+# 터널 로그 보기
+code tunnel service log
+
+# 터널 서비스 제거 (필요 시)
+code tunnel service uninstall
+```
+
+---
+
 *이 문서는 K-MER 멀티모달 운전자 감정인식 시스템의 실행 환경을 기록한 것입니다.*
 *프로젝트 전체 아키텍처는 `SYSTEM_OVERVIEW.md`를 참조하십시오.*
