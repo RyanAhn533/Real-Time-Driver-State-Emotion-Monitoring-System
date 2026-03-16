@@ -165,33 +165,46 @@
 
 | 패키지 | 버전 | 비고 |
 |--------|------|------|
-| PyTorch | 2.10.0 | **CPU 전용 빌드** |
-| torchvision | 0.25.0 | CPU 전용 |
-| torchaudio | 2.10.0 | CPU 전용 |
+| PyTorch | 2.10.0 | **CUDA 13.0 빌드 (GPU 사용 가능)** |
+| torchvision | 0.25.0 | CUDA 지원 |
+| torchaudio | 2.10.0 | CUDA 지원 |
 | numpy | 2.4.2 | |
+| cuDNN | 9.2.0 (via conda) | `torch.backends.cudnn.version()` = 92000 |
+
+### 3.3 GPU 검증 결과 (2026-03-16)
+
+```
+torch.cuda.is_available()  = True
+torch.version.cuda         = 13.0
+torch.cuda.get_device_name = NVIDIA Thor
+Compute Capability         = 11.0
+GPU Memory (Unified)       = 122.8 GB
+cuDNN version              = 92000
+```
+
+**벤치마크 (matmul 2000x2000 x100회):**
+
+| 디바이스 | 시간 | 배속 |
+|---------|------|------|
+| GPU (Thor) | 0.397s | **15.0x** |
+| CPU (Cortex-X4) | 5.961s | 1.0x |
+
+**MobileNetV2 GPU 추론 테스트:** 정상 (output shape: [1, 1000])
+
+### 3.4 설치 이력
+
+| 일자 | 변경 내용 | 방법 |
+|------|----------|------|
+| ~ 초기 | PyTorch 2.10.0 CPU 빌드 (pip) | `pip install torch` |
+| 2026-03-16 | PyTorch 2.10.0 CUDA 13.0 빌드로 교체 | `conda install pytorch=2.10.0=cuda130_generic_py313* --channel conda-forge` |
+
+> 교체 전 패키지 스냅샷: `PACKAGE_VERSIONS_20260316.txt`
 
 ---
 
-## 4. 주요 이슈 및 권장 조치
+## 4. 참고 사항
 
-### 4.1 [심각] PyTorch CUDA 미지원
-
-**현상:**
-- `torch.cuda.is_available()` → `False`
-- `torch.version.cuda` → `None`
-- miniforge3/pip으로 설치된 일반 CPU 빌드
-
-**영향:**
-- K-FER, K-MER Fusion 등 모든 딥러닝 추론이 CPU에서만 실행됨
-- Thor GPU(CUDA 13.0)를 전혀 활용하지 못함
-- 실시간 DMS 파이프라인 성능 목표 달성 불가
-
-**권장 조치:**
-- NVIDIA에서 제공하는 Jetson Thor용 PyTorch wheel (CUDA 13.0 빌드) 설치
-- 또는 NVIDIA NGC 컨테이너(`nvcr.io/nvidia/l4t-pytorch`)를 Docker로 활용
-- TensorRT 변환을 통한 최적 추론 경로 확보
-
-### 4.2 [참고] Swap 미설정
+### 4.1 [참고] Swap 미설정
 
 **현상:**
 - Swap 공간 0B
