@@ -1,0 +1,106 @@
+===================================================================
+  K-MER 실시간 데모 실행 가이드
+  MOTIE RS-2024-00487049 | Sejong Univ. HEART Lab
+===================================================================
+
+[사전 준비]
+  1. RealSense D435 카메라 → USB 허브에 연결
+  2. RODE Wireless GO II RX → USB 허브에 연결 (TX 전원 ON)
+  3. ADI BLE 동글 → USB 허브에 연결 (워치 전원 ON)
+  4. USB-C → 노트북 연결 (패킷 전송용)
+  5. 모니터 HDMI/DP 연결
+
+===================================================================
+[1단계] USB 가젯 권한 (터미널에서 1회)
+===================================================================
+sudo chmod 666 /dev/ttyGS0
+
+===================================================================
+[2단계] Docker 컨테이너 시작
+===================================================================
+# 컨테이너 확인
+docker ps -a | grep kmer
+
+# 컨테이너가 없으면 생성 (최초 1회)
+docker run -d --name kmer_run --runtime nvidia --privileged \
+  --network host \
+  -e DISPLAY=$DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix \
+  -v /home/jetson/work:/workspace \
+  -v /dev:/dev \
+  kmer_ready sleep infinity
+
+# 컨테이너가 Exited 상태면 시작
+docker start kmer_run
+
+===================================================================
+[3단계] X11 디스플레이 허용
+===================================================================
+xhost +local:docker
+
+===================================================================
+[4단계] 데모 실행
+===================================================================
+# 전체 실행 (카메라 + 오디오 + 워치 + USB 패킷)
+docker exec -e DISPLAY=$DISPLAY kmer_run \
+  python3 /workspace/Real-Time-Driver-State-Emotion-Monitoring-System/kmer_demo_final.py
+
+# 오디오 Expert 없이 실행 (빠름)
+docker exec -e DISPLAY=$DISPLAY kmer_run \
+  python3 /workspace/Real-Time-Driver-State-Emotion-Monitoring-System/kmer_demo_final.py --no_audio
+
+===================================================================
+[종료]
+===================================================================
+  - 모니터 창에서 Q 또는 ESC 키
+  - 또는 터미널에서 Ctrl+C
+  - 녹화 파일은 recordings/ 폴더에 자동 저장
+
+===================================================================
+[트러블슈팅]
+===================================================================
+
+Q: 카메라가 흑백으로 나옴
+A: 이전 프로세스가 카메라를 잡고 있음
+   → docker exec kmer_run bash -c 'kill -9 $(pgrep python3)'
+   → 잠시 기다린 후 다시 실행
+
+Q: "Qt platform plugin xcb" 에러
+A: xhost +local:docker 실행했는지 확인
+   DISPLAY 환경변수 확인: echo $DISPLAY
+
+Q: /dev/ttyGS0 권한 에러
+A: sudo chmod 666 /dev/ttyGS0
+
+Q: 마이크 인식 안됨
+A: RODE RX가 USB에 꽂혀있는지 확인
+   lsusb | grep -i rode
+
+Q: 워치 BLE 실패
+A: ADI 동글 확인 + 워치 전원 확인 + 워치를 동글 가까이
+
+Q: 컨테이너 의존성 문제 (cv2, protobuf 등)
+A: docker exec kmer_run apt-get install -y libsm6 libice6 libxcb-xinerama0
+   docker exec kmer_run pip install protobuf==4.25.5
+
+===================================================================
+[USB 패킷 구조 - 모트렉스 13-byte 규격]
+===================================================================
+  Byte 0:  STX          = 0x02
+  Byte 1:  VERSION      = 0x01
+  Byte 2~3: RESERVED    = 0x00 0x00
+  Byte 4:  DEST         = 0x10
+  Byte 5~7: DATA LENGTH = 3 (LSB first)
+  Byte 8:  COMMAND      = 0xF0
+  Byte 9:  BODY[0]      = [Emotion D7~D4][Stress D3][LowAttn D2][Drowsy D1][Rsv D0]
+  Byte10:  BODY[1]      = [EmoInt D7~D5][StateInt D4~D2][Rsv D1~D0]
+  Byte11:  CHECKSUM     = XOR(Byte0~Byte10)
+  Byte12:  ETX          = 0x03
+
+  Emotion: 0=Fear 1=Surprise 2=Anger 3=Sad 4=Happy 5=Disgust
+  Serial Port: /dev/ttyGS0 (Jetson) ↔ COM7 (Laptop)
+
+===================================================================
+[한 줄 실행 (복붙용)]
+===================================================================
+sudo chmod 666 /dev/ttyGS0 && xhost +local:docker && docker start kmer_run && docker exec -e DISPLAY=$DISPLAY kmer_run python3 /workspace/Real-Time-Driver-State-Emotion-Monitoring-System/kmer_demo_final.py --no_audio

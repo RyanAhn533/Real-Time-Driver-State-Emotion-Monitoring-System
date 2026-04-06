@@ -1,0 +1,1 @@
+docker run -d --gpus all --runtime=nvidia   --name gracious_edison   -v /home/jetson/work:/workspace   -v /dev:/dev   --device /dev/bus/usb   --network host   nvcr.io/nvidia/pytorch:26.02-py3   sleep infinity

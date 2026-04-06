@@ -1,0 +1,29 @@
+===== Jetson USB 가젯 권한 설정 (터미널 열 때마다) =====
+
+sudo chmod 666 /dev/ttyGS0
+
+(참고: g_serial 모듈 로드 불필요 — l4t 가젯에 acm.GS0 이미 활성화됨)
+
+
+===== 전송 테스트 (시뮬레이션) =====
+
+cd /home/jetson/work/kmer3/kmer1
+python3 gateway_v2/demo_usb_send.py --simulate --port /dev/ttyGS0
+
+
+===== 카메라 실시간 전송 =====
+
+cd /home/jetson/work/kmer3/kmer1
+python3 gateway_v2/demo_usb_send.py --live --port /dev/ttyGS0
+
+
+===== 드라이런 (전송없이 패킷 확인) =====
+
+cd /home/jetson/work/kmer3/kmer1
+python3 gateway_v2/demo_usb_send.py --dry-run
+
+
+===== 노트북 수신 (Windows) =====
+
+pip install pyserial
+python usb_receiver.py COM3

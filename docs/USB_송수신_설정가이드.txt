@@ -1,0 +1,200 @@
+===================================================
+ K-MER USB 13-byte 패킷 송수신 설정 가이드
+===================================================
+
+[개요]
+- Jetson AGX Thor → USB-C → 노트북 (Windows)
+- 모트렉스 13-byte 프로토콜 (gateway_v2)
+- 포트: Jetson /dev/ttyGS0 (USB 가젯 시리얼), 노트북 COM포트
+- 통신속도: 115200 baud
+
+주의: /dev/ttyACM0은 ADI BLE 동글(워치)이므로 사용 금지!
+
+
+===================================================
+0. Jetson USB 가젯 시리얼 활성화 (최초 1회)
+===================================================
+
+  sudo modprobe g_serial
+  sudo chmod 666 /dev/ttyGS0
+
+  * 재부팅 후에도 자동 로드하려면:
+    echo "g_serial" | sudo tee -a /etc/modules-load.d/usb-gadget.conf
+
+  * 확인:
+    ls -la /dev/ttyGS0
+    → crw-rw-rw- ... /dev/ttyGS0 이면 OK
+
+
+===================================================
+1. 노트북 (Windows) 설정
+===================================================
+
+(1) COM 포트 확인
+    - USB-C 케이블 연결
+    - 장치관리자 열기 (Win+X → 장치관리자)
+    - 포트(COM & LPT) → "USB 직렬 장치 (COM?)" 확인
+    - COM 번호 기억 (예: COM3)
+    * 안 보이면:
+      - Jetson에서 sudo modprobe g_serial 실행했는지 확인
+      - USB-C 케이블 뽑았다 다시 꽂기
+      - Windows에서 CDC ACM 드라이버 필요할 수 있음
+
+(2) Python + pyserial 설치
+    pip install pyserial
+
+(3) 수신 스크립트 저장 (usb_receiver.py)
+    아래 코드를 노트북에 저장:
+
+------- usb_receiver.py 시작 -------
+#!/usr/bin/env python3
+import serial
+import sys
+from datetime import datetime
+
+PORT = sys.argv[1] if len(sys.argv) > 1 else "COM3"
+BAUD = 115200
+PACKET_SIZE = 13
+STX, ETX = 0x02, 0x03
+
+EMOTIONS = {0:"공포", 1:"놀람", 2:"분노", 3:"슬픔", 4:"행복/기쁨", 5:"혐오"}
+
+ser = serial.Serial(PORT, BAUD, timeout=1)
+print(f"수신 대기: {PORT} @ {BAUD}")
+print("=" * 60)
+
+count = 0
+buf = b""
+while True:
+    buf += ser.read(ser.in_waiting or 1)
+    while len(buf) >= PACKET_SIZE:
+        pos = buf.find(bytes([STX]))
+        if pos < 0:
+            buf = b""
+            break
+        buf = buf[pos:]
+        if len(buf) < PACKET_SIZE:
+            break
+        pkt, buf = buf[:PACKET_SIZE], buf[PACKET_SIZE:]
+        if pkt[-1] != ETX:
+            buf = pkt[1:] + buf
+            continue
+
+        count += 1
+        b0, b1 = pkt[9], pkt[10]
+        emo = (b0 >> 4) & 0x0F
+        stress = bool(b0 & 8)
+        low_attn = bool(b0 & 4)
+        drowsy = bool(b0 & 2)
+        emo_int = (b1 >> 5) & 7
+        state_int = (b1 >> 2) & 7
+
+        ts = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        hex_str = " ".join(f"{b:02X}" for b in pkt)
+        flags = " | ".join(
+            f for f, v in [("STRESS", stress), ("LOW_ATTN", low_attn), ("DROWSY", drowsy)] if v
+        ) or "NORMAL"
+
+        print(f"[{count:04d}] {ts}  {hex_str}")
+        print(f"  감정: {EMOTIONS.get(emo, f'Reserved(0x{emo:X})')} 강도:{emo_int}/7  상태강도:{state_int}/7")
+        print(f"  상태: {flags}")
+        print()
+------- usb_receiver.py 끝 -------
+
+(4) 수신 스크립트 실행
+    python usb_receiver.py COM3
+    (COM3 대신 장치관리자에서 확인한 번호 사용)
+
+
+===================================================
+2. Jetson 전송 명령어
+===================================================
+
+(1) 시뮬레이션 전송 (통신 테스트, 15개 시나리오)
+    cd /home/jetson/work/kmer3/kmer1
+    python3 gateway_v2/demo_usb_send.py --simulate --port /dev/ttyGS0
+
+(2) 카메라 실시간 전송 (E2E)
+    cd /home/jetson/work/kmer3/kmer1
+    python3 gateway_v2/demo_usb_send.py --live --port /dev/ttyGS0
+
+(3) 드라이런 (전송 없이 패킷만 확인)
+    python3 gateway_v2/demo_usb_send.py --dry-run
+
+
+===================================================
+3. 패킷 구조 (13 bytes, 모트렉스 규격)
+===================================================
+
+Byte  0: STX          = 0x02
+Byte  1: VERSION      = 0x01
+Byte  2: RESERVED_H   = 0x00
+Byte  3: RESERVED_L   = 0x00
+Byte  4: DEST         = 0x10 (Jetson → 모트렉스)
+Byte  5: DATA_LEN[0]  = 0x03 (LSB)
+Byte  6: DATA_LEN[1]  = 0x00
+Byte  7: DATA_LEN[2]  = 0x00
+Byte  8: COMMAND      = 0xF0
+Byte  9: BODY[0]      = [감정코드 D7~D4] [Stress D3] [LowAttn D2] [Drowsy D1] [Rsvd D0]
+Byte 10: BODY[1]      = [감정강도 D7~D5] [상태강도 D4~D2] [Rsvd D1~D0]
+Byte 11: CHECKSUM     = XOR (Byte0 ~ Byte10)
+Byte 12: ETX          = 0x03
+
+감정코드: 0=공포, 1=놀람, 2=분노, 3=슬픔, 4=행복/기쁨, 5=혐오, 6~F=Reserved
+
+
+===================================================
+4. 실행 순서 요약
+===================================================
+
+Step 1: Jetson에서 USB 가젯 활성화
+        sudo modprobe g_serial
+        sudo chmod 666 /dev/ttyGS0
+
+Step 2: USB-C 케이블로 Jetson ↔ 노트북 연결
+
+Step 3: 노트북 장치관리자에서 COM 포트 확인
+
+Step 4: 노트북에서 수신 스크립트 실행
+        python usb_receiver.py COM3
+
+Step 5: Jetson에서 전송 스크립트 실행
+        cd /home/jetson/work/kmer3/kmer1
+        python3 gateway_v2/demo_usb_send.py --simulate --port /dev/ttyGS0
+
+Step 6: 노트북 터미널에서 패킷 수신 확인
+
+
+===================================================
+5. 트러블슈팅
+===================================================
+
+- /dev/ttyGS0 없음
+  → sudo modprobe g_serial
+
+- Permission denied (/dev/ttyGS0)
+  → sudo chmod 666 /dev/ttyGS0
+  → 또는 sudo usermod -aG dialout jetson
+
+- 노트북에서 COM 포트 안 보임
+  → Jetson에서 g_serial 모듈 로드했는지 확인
+  → USB-C 케이블 뽑았다 다시 꽂기
+  → 케이블이 데이터 지원인지 확인 (충전전용 X)
+
+- 패킷 깨짐
+  → 양쪽 baudrate 115200 맞는지 확인
+  → 케이블 접촉 확인
+
+- pyserial import 에러
+  → pip install pyserial (serial 아님 주의)
+
+- /dev/ttyACM0은 ADI BLE 동글(워치)임
+  → 노트북 통신에 절대 사용하지 말 것
+  → 반드시 /dev/ttyGS0 사용
+
+
+===================================================
+작성일: 2026-03-30
+프로젝트: K-MER 복합감정인지 시스템
+프로토콜: 모트렉스 13-byte v2
+===================================================
