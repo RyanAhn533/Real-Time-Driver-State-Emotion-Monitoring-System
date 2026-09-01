@@ -18,7 +18,7 @@ K-MER proposes a **real-time multimodal emotion recognition system** designed fo
 - **Multimodal sensing** — vision + audio + physiological signals
 - **Lightweight cross-modal fusion** — <150K parameters
 - **Real-time edge deployment** — NVIDIA Jetson Orin platform
-- **Vehicle gateway interface** — 8-byte USB packet protocol
+- **Vehicle gateway interface** — 8-byte USB packet protocol (spec as of 2026-03; later replaced by the Motrex 12-byte spec)
 
 This system was developed under a **Korean Ministry of Trade, Industry and Energy R&D program** targeting real-world automotive integration.
 
@@ -26,9 +26,11 @@ This system was developed under a **Korean Ministry of Trade, Industry and Energ
 
 ## Overview
 
-K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **감정 6종 + 상태 4종 = 10개 항목**을 실시간으로 인식하여, 8-byte USB 패킷으로 차량 게이트웨이에 전송하는 시스템입니다.
+K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **감정 6종 + 상태 4종 = 10개 항목**을 실시간으로 인식하여, 8-byte USB 패킷(2026-03 시점 규격; 이후 모트렉스 12-byte 규격으로 변경)으로 차량 게이트웨이에 전송하는 시스템입니다.
 
-**종합 정확도 98.0%** (10개 인식 항목 Macro Average)
+**종합 정확도 98.0%** (10개 인식 항목 Macro Average) — **시뮬레이션 추정치, 실측 아님**
+
+> 아래 표의 수치는 실차·실증 측정값이 아니다. 감정 6종·부정감정은 K-FER 검증 confusion matrix 를 바탕으로 W=7 majority-vote temporal smoothing 을 몬테카를로 시뮬레이션(`multimodal_dms/evaluate_demo.py`, n=300)한 값이고, 스트레스·주의분산·졸음 3항목은 같은 스크립트에 상수(0.95/0.95/0.96)로 기입된 설계 목표치다.
 
 | 구분 | 인식 항목 | 정확도 |
 |------|----------|--------|
@@ -57,10 +59,10 @@ K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **
    — K-MER fusion module with only ~144K parameters (KD student: ~12K)
 
 4. **Real-Time Edge Deployment**
-   — End-to-end pipeline running on NVIDIA Jetson Orin at 30fps
+   — End-to-end pipeline running on NVIDIA Jetson Orin (camera input 30fps; inference loop 10 Hz, see `sensing/config/sensing_config.yaml`)
 
 5. **Vehicle Interface Protocol**
-   — Driver emotion and state encoded into an 8-byte USB packet for automotive gateway systems
+   — Driver emotion and state encoded into an 8-byte USB packet for automotive gateway systems (2026-03 spec; later replaced by the Motrex 12-byte spec)
 
 ---
 
@@ -75,7 +77,7 @@ K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **
 | 센서 | 스펙 | 용도 |
 |------|------|------|
 | Intel RealSense D435 | 1280×720 @30fps | 얼굴 감정 인식 |
-| E4 Wristband | BVP/EDA/HR/Temp | 생리 신호 기반 각성도 |
+| ADI Study Watch (EVAL-HCRWATCH4Z, BLE) | PPG/EDA/Temp | 생리 신호 기반 각성도 (학습 데이터 K-EmoCon 은 E4 Wristband BVP/EDA/HR/Temp 기준) |
 | Microphone | 16kHz mono | 음성 감정 인식 |
 
 ### 2. Expert Models
@@ -95,7 +97,7 @@ K-MER은 차량 내 카메라·생체센서·마이크를 통해 운전자의 **
 
 ### 4. Gateway Packet Protocol
 
-8-byte USB 패킷 구조:
+8-byte USB 패킷 구조 (2026-03 시점 규격; 이후 모트렉스 12-byte 규격으로 변경됨 — 이 저장소 코드는 8-byte 기준):
 
 ```
 [0xAA] [TYPE=1] [SEQ] [LEN=2] [Byte4: EmoCode(4)+Flags(4)] [Byte5: Intensity(6)+R(2)] [CRC8] [0xFE]
